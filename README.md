@@ -16,7 +16,7 @@ cd erpnext_quick_install
 ```
 3. Make the script executable
 ```
-sudo chmod +x erpnext_install.sh
+cd erpnext_quick_install && sudo chmod +x erpnext_install.sh
 ```
 4. Run the script:
 ```
