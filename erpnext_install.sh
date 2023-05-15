@@ -72,7 +72,7 @@ sudo service mysql restart
 
 echo -e "${GREEN}MariaDB settings done!${NC}"
 
-#Install NODE, npm and yarn
+#Install NVM, Node, npm and yarn
 echo -e ${YELLOW}"Now to install NVM, Node, npm and yarn${NC}"
 sleep 1
 echo -e "${RED}NOTE:${NC} ${LIGHT_BLUE}The NVM environment variables set is for this session only. Please restart your terminal after installation is complete to use Node.${NC}"
@@ -100,7 +100,7 @@ sudo pip3 install frappe-bench
 
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
 echo -e "${YELLOW}Initialising bench in frappe-bench folder. If you get a supervisor can't restart bench error don't worry, we will resolve that later.${NC}"
-bench init frappe-bench --version version-14 --verbose --install-app erpnext
+bench init frappe-bench --version version-14 --verbose --install-app erpnext --version version-14
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
