@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # Setting up colors for echo commands
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -7,8 +9,24 @@ RED='\033[0;31m'
 LIGHT_BLUE='\033[1;34m'
 NC='\033[0m' # No Color
 
+# Detect the platform (similar to $OSTYPE)
+OS="`uname`"
+case $OS in
+  'Linux')
+    OS='Linux'
+    if [ -f /etc/redhat-release ] ; then
+      DISTRO='CentOS'
+    elif [ -f /etc/debian_version ] ; then
+      DISTRO='Debian'
+    fi
+    ;;
+  *) ;;
+esac
+echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
+sleep 4
+
 #First Let's take you home
-cd $HOME
+cd $(sudo -u $USER echo $HOME)
 
 #Next let's set some important parameters.
 #We will need your required SQL root passwords
@@ -18,7 +36,6 @@ echo -e "${YELLOW}We will need your required SQL root password${NC}"
 sleep 1
 read -s -p "What is your required SQL root password? " sqlpasswrd
 sleep 1
-echo -e "\n"
 
 #Now let's make sure your instance has the most updated packages
 echo -e "${YELLOW}Updating system packages...${NC}"
@@ -29,20 +46,50 @@ echo -e "${GREEN}System packages updated.${NC}"
 sleep 2
 
 #Now let's install a couple of requirements: git, curl and pip
-echo -e "${YELLOW}Installing git, curl, and pip...${NC}"
+echo -e "${YELLOW}Installing preliminary package requirements${NC}"
 sleep 3
 sudo apt -qq install software-properties-common git curl -y
 
 #Next we'll install the python environment manager...
 echo -e "${YELLOW}Installing python environment manager and other requirements...${NC}"
 sleep 2
-sudo apt -qq install python3-pip python3-dev python3-venv redis-server -y
 
+# Install Python 3.10 if not already installed or version is less than 3.10
+py_version=$(python3 --version 2>&1 | awk '{print $2}')
+py_major=$(echo "$py_version" | cut -d '.' -f 1)
+py_minor=$(echo "$py_version" | cut -d '.' -f 2)
+
+if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
+    echo -e "${LIGHT_BLUE}It appears this instance does not meet the minimum Python version required for ERPNext 14 (Python3.10)... Not to worry, we will sort it out for you${NC}"
+    sleep 3
+    echo -e "${YELLOW}Installing Python 3.10+...${NC}"
+    sleep 2
+
+    sudo apt -qq install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev wget libbz2-dev -y && \
+    wget https://www.python.org/ftp/python/3.10.11/Python-3.10.11.tgz && \
+    tar -xf Python-3.10.11.tgz && \
+    cd Python-3.10.11 && \
+    ./configure --prefix=/usr/local --enable-optimizations --enable-shared LDFLAGS="-Wl,-rpath /usr/local/lib" && \
+    make -j $(nproc) && \
+    sudo make altinstall && \
+    cd .. && \
+    sudo rm -rf Python-3.10.11 && \
+    sudo rm Python-3.10.11.tgz && \
+    pip3.10 install --user --upgrade pip && \
+    python3.10 -m venv $USER && \
+    source $USER/bin/activate && \
+    echo -e "${GREEN}Python3.10 installation successful!${NC}"
+    sleep 2
+fi
+echo -e "${YELLOW}Installing additional Python3.10 packages and Redis Server${NC}"
+sleep 2
+sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y
+echo -e "${GREEN}Done!${NC}"
 #... And mariadb with some extra needed applications.
-echo -e "${YELLOW}Installing MariaDB and other necessary applications...${NC}"
+echo -e "${YELLOW}Now installing MariaDB and other necessary packages...${NC}"
 sleep 2
 sudo apt -qq install mariadb-server mariadb-client xvfb libfontconfig xfonts-75dpi fontconfig libxrender1 -y
-echo -e "${GREEN}Prerequiste software and packages have been installed successfully.${NC}"
+echo -e "${GREEN}MariaDB and other packages have been installed successfully.${NC}"
 sleep 2
 
 #Now we'll go through the required settings of the mysql_secure_installation...
@@ -93,13 +140,21 @@ sudo npm install -g yarn
 echo -e "${GREEN}Package installation complete!${NC}"
 sleep 2
 
+# Now let's reactivate virtual environment
+if [ "$DISTRO" == "Debian" ]; then
+    python3.10 -m venv $USER
+    source $USER/bin/activate
+    nvm use 16
+fi
+
 #Install bench
 echo -e "${YELLOW}Now let's install bench${NC}"
 sleep 2
 sudo pip3 install frappe-bench
 
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
-echo -e "${YELLOW}Initialising bench in frappe-bench folder. If you get a supervisor can't restart bench error don't worry, we will resolve that later.${NC}"
+echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
+echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
 bench init frappe-bench --version version-14 --verbose --install-app erpnext --version version-14
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
@@ -114,7 +169,7 @@ sleep 2
 # Install expect tool only if needed
 echo $passwrd | sudo -S apt -qq install expect -y
 
-echo -e "${YELLOW}Now setting up your site${NC}"
+echo -e "${YELLOW}Now setting up your site. Please wait...${NC}"
 sleep 1
 # Change directory to frappe-bench
 cd frappe-bench && \
@@ -142,6 +197,8 @@ send \"\$adminpwd\r\"
 expect eof
 ")
 echo "$SECURE_MYSQL"
+
+rm ~/.my.cnf
 
 echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
 sleep 2
@@ -208,6 +265,12 @@ case "$continue_ssl" in
         sleep 3
         ;;
 esac
+
+# Now let's reactivate virtual environment
+if [ "$DISTRO" == "Debian" ]; then
+    deactivate
+fi
+
 echo -e "${GREEN}--------------------------------------------------------------------------------"
 echo -e "Congratulations! You have successfully installed ERPNext version 14."
 echo -e "You can start using your new ERPNext installation by visiting:"
