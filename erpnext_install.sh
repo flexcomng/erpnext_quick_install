@@ -17,13 +17,53 @@ case $OS in
     if [ -f /etc/redhat-release ] ; then
       DISTRO='CentOS'
     elif [ -f /etc/debian_version ] ; then
-      DISTRO='Debian'
+      if [ "$(lsb_release -si)" == "Ubuntu" ]; then
+        DISTRO='Ubuntu'
+      else
+        DISTRO='Debian'
+      fi
     fi
     ;;
   *) ;;
 esac
+
+
+ask_twice() {
+    local prompt="$1"
+    local secret="$2"
+    local val1 val2
+
+    while true; do
+        if [ "$secret" = "true" ]; then
+
+            read -rsp "$prompt: " val1
+
+            echo >&2
+        else
+            read -rp "$prompt: " val1
+            echo >&2
+        fi
+        
+        if [ "$secret" = "true" ]; then
+            read -rsp "Confirm password: " val2
+            echo >&2
+        else
+            read -rp "Confirm password: " val2
+            echo >&2
+        fi
+
+        if [ "$val1" = "$val2" ]; then
+            printf "${GREEN}Password confirmed${NC}" >&2
+            echo "$val1"
+            break
+        else
+            printf "${RED}Inputs do not match. Please try again${NC}\n" >&2
+            echo -e "\n"
+        fi
+    done
+}
 echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
-sleep 4
+sleep 2
 
 #First Let's take you home
 cd $(sudo -u $USER echo $HOME)
@@ -34,8 +74,9 @@ echo -e "${YELLOW}First let's set some important parameters...${NC}"
 sleep 1
 echo -e "${YELLOW}We will need your required SQL root password${NC}"
 sleep 1
-read -s -p "What is your required SQL root password? " sqlpasswrd
+sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
 sleep 1
+echo -e "\n"
 
 #Now let's make sure your instance has the most updated packages
 echo -e "${YELLOW}Updating system packages...${NC}"
@@ -76,12 +117,10 @@ if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_
     sudo rm -rf Python-3.10.11 && \
     sudo rm Python-3.10.11.tgz && \
     pip3.10 install --user --upgrade pip && \
-    python3.10 -m venv $USER && \
-    source $USER/bin/activate && \
     echo -e "${GREEN}Python3.10 installation successful!${NC}"
     sleep 2
 fi
-echo -e "${YELLOW}Installing additional Python3.10 packages and Redis Server${NC}"
+echo -e "${YELLOW}Installing additional Python packages and Redis Server${NC}"
 sleep 2
 sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y
 echo -e "${GREEN}Done!${NC}"
@@ -142,7 +181,7 @@ sleep 2
 
 # Now let's reactivate virtual environment
 if [ "$DISTRO" == "Debian" ]; then
-    python3.10 -m venv $USER
+    python3.10 -m venv $USER && \
     source $USER/bin/activate
     nvm use 16
 fi
@@ -162,8 +201,8 @@ sleep 1
 # Prompt user for site name
 echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
 read -p "Enter the site name (If you wish to install SSL later, please enter a FQDN): " site_name
-echo "Enter the Administrator password:"
-read -s -p "Password: " adminpasswrd
+sleep 1
+adminpasswrd=$(ask_twice "Enter the Administrator password" "true")
 echo -e "\n"
 sleep 2
 # Install expect tool only if needed
