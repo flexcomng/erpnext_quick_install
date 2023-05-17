@@ -198,8 +198,6 @@ expect eof
 ")
 echo "$SECURE_MYSQL"
 
-rm ~/.my.cnf
-
 echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
 sleep 2
 # Setup supervisor and nginx config
