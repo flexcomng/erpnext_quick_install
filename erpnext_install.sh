@@ -136,7 +136,7 @@ echo -e ${YELLOW}"Now we'll go ahead to apply MariaDB security settings...${NC}"
 sleep 2
 
 sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
-sudo mysql -u root -p$sqlpasswrd -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
+sudo mysql -u root -p"$sqlpasswrd" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
 sudo mysql -u root -p"$sqlpasswrd" -e "DELETE FROM mysql.user WHERE User='';"
 sudo mysql -u root -p"$sqlpasswrd" -e "DROP DATABASE IF EXISTS test;DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
 sudo mysql -u root -p"$sqlpasswrd" -e "FLUSH PRIVILEGES;"
@@ -288,8 +288,17 @@ case "$continue_ssl" in
         # Install Certbot
         echo -e "${YELLOW}Installing Certbot...${NC}"
         sleep 1
-        sudo apt -qq install certbot python3-certbot-nginx -y
-
+        if [ "$DISTRO" == "Debian" ]; then
+            echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
+            sleep 4
+            sudo pip3 uninstall cryptography -y
+            yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
+            echo -e "${GREEN}Package fixed${NC}"
+            sleep 2
+        fi
+        # Install Certbot
+	    sudo apt -qq install certbot python3-certbot-nginx -y
+        
         # Obtain and Install the certificate
         echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
         sleep 2
