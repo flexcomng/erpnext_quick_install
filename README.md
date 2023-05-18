@@ -1,7 +1,7 @@
 # Auto Install Script for ERPNext v14
-(Almost) No interaction script for ERPNext V14
+(Almost) No-interactive script for ERPNext V14 installation.
 
-This is an almost no-interactive script for installing ERPNext Version 14.
+This is an almost no-interactive script for installing ERPNext Version 14. You can set up either development or production with very minimal interaction.
 
 # How To:
 To use this script, follow these steps:
@@ -20,7 +20,7 @@ cd erpnext_quick_install && sudo chmod +x erpnext_install.sh
 ```
 4. Run the script:
 ```
-./erpnext_install.sh
+source erpnext_install.sh
 ```
 # Compatibility
 

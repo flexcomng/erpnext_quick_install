@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 
+# Setting error handler
+handle_error() {
+    local line=$1
+    local exit_code=$?
+    echo "An error occurred on line $line with exit status $exit_code"
+    exit $exit_code
+}
+
+trap 'handle_error $LINENO' ERR
 set -e
+
+# Retrieve server IP
+server_ip=$(hostname -I | awk '{print $1}')
 
 # Setting up colors for echo commands
 YELLOW='\033[1;33m'
@@ -8,6 +20,25 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 LIGHT_BLUE='\033[1;34m'
 NC='\033[0m' # No Color
+
+# Checking Supported OS and distribution
+SUPPORTED_DISTRIBUTIONS=("Ubuntu" "Debian" "CentOS")
+SUPPORTED_VERSIONS=("22.04" "20.04" "11" "10" "9" "8")
+
+check_os() {
+    local os_name=$(lsb_release -is)
+    local os_version=$(lsb_release -rs)
+    for i in "${!SUPPORTED_DISTRIBUTIONS[@]}"; do
+        if [[ "${SUPPORTED_DISTRIBUTIONS[$i]}" = "$os_name" ]] && [[ "${SUPPORTED_VERSIONS[$i]}" = "$os_version" ]]; then
+            return 0
+        fi
+    done
+    echo -e "${RED}This script is not compatible with your operating system.${NC}"
+    exit 1
+}
+
+check_os
+
 
 # Detect the platform (similar to $OSTYPE)
 OS="`uname`"
@@ -63,7 +94,8 @@ ask_twice() {
     done
 }
 echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
-sleep 2
+echo -e "\n"
+sleep 3
 
 #First Let's take you home
 cd $(sudo -u $USER echo $HOME)
@@ -120,10 +152,13 @@ if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_
     echo -e "${GREEN}Python3.10 installation successful!${NC}"
     sleep 2
 fi
+echo -e "\n"
 echo -e "${YELLOW}Installing additional Python packages and Redis Server${NC}"
 sleep 2
 sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y
 echo -e "${GREEN}Done!${NC}"
+sleep 1
+echo -e "\n"
 #... And mariadb with some extra needed applications.
 echo -e "${YELLOW}Now installing MariaDB and other necessary packages...${NC}"
 sleep 2
@@ -157,11 +192,11 @@ EOF'
 sudo service mysql restart
 
 echo -e "${GREEN}MariaDB settings done!${NC}"
-
+echo -e "\n"
+sleep 1
 #Install NVM, Node, npm and yarn
 echo -e ${YELLOW}"Now to install NVM, Node, npm and yarn${NC}"
-sleep 1
-echo -e "${RED}NOTE:${NC} ${LIGHT_BLUE}The NVM environment variables set is for this session only. Please restart your terminal after installation is complete to use Node.${NC}"
+sleep 2
 curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 
 # Add environment variables to .profile
@@ -219,7 +254,7 @@ export SQL_PASSWD=$sqlpasswrd
 export ADMIN_PASSWD=$adminpasswrd
 
 #Set Administrator password.
-SECURE_MYSQL=$(expect -c "
+SITE_SETUP=$(expect -c "
 set timeout 300
 set sitename \$env(SITE_NAME)
 set sqlpwd \$env(SQL_PASSWD)
@@ -235,96 +270,120 @@ sleep 20
 send \"\$adminpwd\r\"
 expect eof
 ")
-echo "$SECURE_MYSQL"
+echo "$SITE_SETUP"
 
-echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
-sleep 2
-# Setup supervisor and nginx config
-yes | sudo bench setup production $USER && \
-echo -e "${YELLOW}Applying necessary permissions to supervisor...${NC}"
-sleep 1
-# Change ownership of supervisord.conf
-sudo sed -i '6i chown='"$USER"':'"$USER"'' /etc/supervisor/supervisord.conf && \
+echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
+read -p "Response: " continue_prod
+continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
 
-# Restart supervisor
-sudo service supervisor restart && \
-
-# Setup production again to reflect the new site
-yes | sudo bench setup production $USER && \
-
-echo -e "${YELLOW}Enabling Scheduler...${NC}"
-sleep 1
-# Enable and resume the scheduler for the site
-bench --site $site_name scheduler enable && \
-bench --site $site_name scheduler resume && \
-
-echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
-sleep 1
-
-# Restart bench
-bench restart && \
-
-#Now to make sure the environment is fully setup
-sudo chmod 755 /home/$(echo $USER)
-sleep 3
-printf "${GREEN}Production setup complete! "
-printf '\xF0\x9F\x8E\x86'
-printf "${NC}\n"
-sleep 3
-
-echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
-
-read -p "Response: " continue_ssl
-
-continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
-
-case "$continue_ssl" in
+case "$continue_prod" in
     "yes" | "y")
-        echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable before your proceed.${NC}"
-        sleep 3
-        # Prompt user for email
-        read -p "Enter your email address: " email_address
 
-        # Install Certbot
-        echo -e "${YELLOW}Installing Certbot...${NC}"
-        sleep 1
-        if [ "$DISTRO" == "Debian" ]; then
-            echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
-            sleep 4
-            sudo pip3 uninstall cryptography -y
-            yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
-            echo -e "${GREEN}Package fixed${NC}"
+    echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
+    sleep 2
+    # Setup supervisor and nginx config
+    yes | sudo bench setup production $USER && \
+    echo -e "${YELLOW}Applying necessary permissions to supervisor...${NC}"
+    sleep 1
+    # Change ownership of supervisord.conf
+    sudo sed -i '6i chown='"$USER"':'"$USER"'' /etc/supervisor/supervisord.conf && \
+
+    # Restart supervisor
+    sudo service supervisor restart && \
+
+    # Setup production again to reflect the new site
+    yes | sudo bench setup production $USER && \
+
+    echo -e "${YELLOW}Enabling Scheduler...${NC}"
+    sleep 1
+    # Enable and resume the scheduler for the site
+    bench --site $site_name scheduler enable && \
+    bench --site $site_name scheduler resume && \
+
+    echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
+    sleep 1
+
+    # Restart bench
+    bench restart && \
+
+    #Now to make sure the environment is fully setup
+    sudo chmod 755 /home/$(echo $USER)
+    sleep 3
+    printf "${GREEN}Production setup complete! "
+    printf '\xF0\x9F\x8E\x86'
+    printf "${NC}\n"
+    sleep 3
+
+    echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
+
+    read -p "Response: " continue_ssl
+
+    continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+
+    case "$continue_ssl" in
+        "yes" | "y")
+            echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable before your proceed.${NC}"
+            sleep 3
+            # Prompt user for email
+            read -p "Enter your email address: " email_address
+
+            # Install Certbot
+            echo -e "${YELLOW}Installing Certbot...${NC}"
+            sleep 1
+            if [ "$DISTRO" == "Debian" ]; then
+                echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
+                sleep 4
+                sudo pip3 uninstall cryptography -y
+                yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
+                echo -e "${GREEN}Package fixed${NC}"
+                sleep 2
+            fi
+            # Install Certbot
+            sudo apt -qq install certbot python3-certbot-nginx -y
+            
+            # Obtain and Install the certificate
+            echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
             sleep 2
-        fi
-        # Install Certbot
-	    sudo apt -qq install certbot python3-certbot-nginx -y
-        
-        # Obtain and Install the certificate
-        echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
-        sleep 2
-        sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name
-        echo -e "${GREEN}SSL certificate installed successfully.${NC}"
-        sleep 2
+            sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name
+            echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+            sleep 2
+            ;;
+        *)
+            echo -e "${RED}Skipping SSL installation...${NC}"
+            sleep 3
+            ;;
+    esac
+
+    # Now let's reactivate virtual environment
+    if [ "$DISTRO" == "Debian" ]; then
+        deactivate
+    fi
+
+    echo -e "${GREEN}--------------------------------------------------------------------------------"
+    echo -e "Congratulations! You have successfully installed ERPNext version 14."
+    echo -e "You can start using your new ERPNext installation by visiting https://$site_name"
+    echo -e "(if you have enabled SSL and used a Fully Qualified Domain Name"
+    echo -e "during installation) or http://$server_ip to begin."
+    echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
+    echo -e "Enjoy using ERPNext!"
+    echo -e "--------------------------------------------------------------------------------${NC}"
         ;;
     *)
-        echo -e "${RED}Skipping SSL installation...${NC}"
-        sleep 3
-        ;;
+
+    echo -e "${YELLOW}Getting your site ready for development...${NC}"
+    sleep 2
+    source ~/.profile
+    nvm alias default 16
+    bench use $site_name
+    bench build
+    echo -e "${GREEN}Done!"
+    sleep 5
+
+    echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
+    echo -e "Congratulations! You have successfully installed Frappe and ERPNext version 14 Development Enviromment."
+    echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
+    echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
+    echo -e "Enjoy development with Frappe!"
+    echo -e "-----------------------------------------------------------------------------------------------${NC}"
+    ;;
 esac
-
-# Now let's reactivate virtual environment
-if [ "$DISTRO" == "Debian" ]; then
-    deactivate
-fi
-
-echo -e "${GREEN}--------------------------------------------------------------------------------"
-echo -e "Congratulations! You have successfully installed ERPNext version 14."
-echo -e "You can start using your new ERPNext installation by visiting:"
-echo -e "https://$site_name (if you have enabled SSL and used a Fully Qualified Domain Name"
-echo -e "during installation)"
-echo -e "or"
-echo -e "http://your_server_ip_address"
-echo -e "Replace 'your_server_ip_address' with the actual IP address of your server."
-echo -e "Remember to configure your ERPNext instance with the necessary information."
-echo -e "Enjoy using ERPNext!"
-echo -e "--------------------------------------------------------------------------------${NC}"
