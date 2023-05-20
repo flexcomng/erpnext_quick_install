@@ -28,13 +28,27 @@ SUPPORTED_VERSIONS=("22.04" "20.04" "11" "10" "9" "8")
 check_os() {
     local os_name=$(lsb_release -is)
     local os_version=$(lsb_release -rs)
-    for i in "${!SUPPORTED_DISTRIBUTIONS[@]}"; do
-        if [[ "${SUPPORTED_DISTRIBUTIONS[$i]}" = "$os_name" ]] && [[ "${SUPPORTED_VERSIONS[$i]}" = "$os_version" ]]; then
-            return 0
+    local os_supported=false
+    local version_supported=false
+
+    for i in "${SUPPORTED_DISTRIBUTIONS[@]}"; do
+        if [[ "$i" = "$os_name" ]]; then
+            os_supported=true
+            break
         fi
     done
-    echo -e "${RED}This script is not compatible with your operating system.${NC}"
-    exit 1
+
+    for i in "${SUPPORTED_VERSIONS[@]}"; do
+        if [[ "$i" = "$os_version" ]]; then
+            version_supported=true
+            break
+        fi
+    done
+
+    if [[ "$os_supported" = false ]] || [[ "$version_supported" = false ]]; then
+        echo -e "${RED}This script is not compatible with your operating system or its version.${NC}"
+        exit 1
+    fi
 }
 
 check_os
@@ -93,6 +107,7 @@ ask_twice() {
         fi
     done
 }
+echo -e "\n"
 echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
 echo -e "\n"
 sleep 3
@@ -133,8 +148,10 @@ py_major=$(echo "$py_version" | cut -d '.' -f 1)
 py_minor=$(echo "$py_version" | cut -d '.' -f 2)
 
 if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
-    echo -e "${LIGHT_BLUE}It appears this instance does not meet the minimum Python version required for ERPNext 14 (Python3.10)... Not to worry, we will sort it out for you${NC}"
-    sleep 3
+    echo -e "${LIGHT_BLUE}It appears this instance does not meet the minimum Python version required for ERPNext 14 (Python3.10)...${NC}"
+    sleep 2 
+    echo -e "${YELLOW}Not to worry, we will sort it out for you${NC}"
+    sleep 4
     echo -e "${YELLOW}Installing Python 3.10+...${NC}"
     sleep 2
 
