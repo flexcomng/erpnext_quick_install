@@ -22,7 +22,7 @@ LIGHT_BLUE='\033[1;34m'
 NC='\033[0m' # No Color
 
 # Checking Supported OS and distribution
-SUPPORTED_DISTRIBUTIONS=("Ubuntu" "Debian" "CentOS")
+SUPPORTED_DISTRIBUTIONS=("Ubuntu" "Debian")
 SUPPORTED_VERSIONS=("22.04" "20.04" "11" "10" "9" "8")
 
 check_os() {
