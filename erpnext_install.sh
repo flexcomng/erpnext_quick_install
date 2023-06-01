@@ -172,7 +172,7 @@ fi
 echo -e "\n"
 echo -e "${YELLOW}Installing additional Python packages and Redis Server${NC}"
 sleep 2
-sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y
+sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils wkhtmltopdf redis-server -y
 echo -e "${GREEN}Done!${NC}"
 sleep 1
 echo -e "\n"
