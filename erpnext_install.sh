@@ -183,20 +183,25 @@ sudo apt -qq install mariadb-server mariadb-client xvfb libfontconfig xfonts-75d
 echo -e "${GREEN}MariaDB and other packages have been installed successfully.${NC}"
 sleep 2
 
-#Now we'll go through the required settings of the mysql_secure_installation...
-echo -e ${YELLOW}"Now we'll go ahead to apply MariaDB security settings...${NC}"
-sleep 2
 
-sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
-sudo mysql -u root -p"$sqlpasswrd" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
-sudo mysql -u root -p"$sqlpasswrd" -e "DELETE FROM mysql.user WHERE User='';"
-sudo mysql -u root -p"$sqlpasswrd" -e "DROP DATABASE IF EXISTS test;DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-sudo mysql -u root -p"$sqlpasswrd" -e "FLUSH PRIVILEGES;"
+# Use a hidden marker file to determine if this section of the script has run before.
+MARKER_FILE=~/.mysql_configured.marker
 
-echo -e "${YELLOW}...And add some settings to /etc/mysql/my.cnf:${NC}"
-sleep 2
+if [ ! -f "$MARKER_FILE" ]; then
+    #Now we'll go through the required settings of the mysql_secure_installation...
+    echo -e ${YELLOW}"Now we'll go ahead to apply MariaDB security settings...${NC}"
+    sleep 2
 
-sudo bash -c 'cat << EOF >> /etc/mysql/my.cnf
+    sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
+    sudo mysql -u root -p"$sqlpasswrd" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$sqlpasswrd';"
+    sudo mysql -u root -p"$sqlpasswrd" -e "DELETE FROM mysql.user WHERE User='';"
+    sudo mysql -u root -p"$sqlpasswrd" -e "DROP DATABASE IF EXISTS test;DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    sudo mysql -u root -p"$sqlpasswrd" -e "FLUSH PRIVILEGES;"
+
+    echo -e "${YELLOW}...And add some settings to /etc/mysql/my.cnf:${NC}"
+    sleep 2
+
+    sudo bash -c 'cat << EOF >> /etc/mysql/my.cnf
 [mysqld]
 character-set-client-handshake = FALSE
 character-set-server = utf8mb4
@@ -206,11 +211,16 @@ collation-server = utf8mb4_unicode_ci
 default-character-set = utf8mb4
 EOF'
 
-sudo service mysql restart
+    sudo service mysql restart
 
-echo -e "${GREEN}MariaDB settings done!${NC}"
-echo -e "\n"
-sleep 1
+    # Create the hidden marker file to indicate this section of the script has run.
+    touch "$MARKER_FILE"
+    echo -e "${GREEN}MariaDB settings done!${NC}"
+    echo -e "\n"
+    sleep 1
+fi
+
+
 #Install NVM, Node, npm and yarn
 echo -e ${YELLOW}"Now to install NVM, Node, npm and yarn${NC}"
 sleep 2
