@@ -265,6 +265,10 @@ sleep 1
 # Change directory to frappe-bench
 cd frappe-bench && \
 
+sudo sed -i '/port 6379/a port 11000' /etc/redis/redis.conf
+sudo service redis-server restart
+
+
 # Create new site using expect
 export SITE_NAME=$site_name
 export SQL_PASSWD=$sqlpasswrd
@@ -288,6 +292,9 @@ send \"\$adminpwd\r\"
 expect eof
 ")
 echo "$SITE_SETUP"
+
+sudo sed -i '/port 11000/d' /etc/redis/redis.conf
+sudo service redis-server restart
 
 echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
 read -p "Response: " continue_prod
