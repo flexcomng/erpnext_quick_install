@@ -242,7 +242,7 @@ echo -e "${GREEN}Package installation complete!${NC}"
 sleep 2
 
 # Now let's reactivate virtual environment
-if [ "$DISTRO" == "Debian" ]; then
+if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
     python3.10 -m venv $USER && \
     source $USER/bin/activate
     nvm use 16
@@ -389,7 +389,7 @@ case "$continue_prod" in
     esac
 
     # Now let's reactivate virtual environment
-    if [ "$DISTRO" == "Debian" ]; then
+    if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
         deactivate
     fi
 
