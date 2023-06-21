@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Setting error handler
+# # Setting error handler
 handle_error() {
     local line=$1
     local exit_code=$?
@@ -136,7 +136,7 @@ sleep 2
 #Now let's install a couple of requirements: git, curl and pip
 echo -e "${YELLOW}Installing preliminary package requirements${NC}"
 sleep 3
-sudo apt -qq install software-properties-common git curl -y
+sudo apt install software-properties-common git curl -y
 
 #Next we'll install the python environment manager...
 echo -e "${YELLOW}Installing python environment manager and other requirements...${NC}"
@@ -172,14 +172,20 @@ fi
 echo -e "\n"
 echo -e "${YELLOW}Installing additional Python packages and Redis Server${NC}"
 sleep 2
-sudo apt -qq install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils wkhtmltopdf redis-server -y
+sudo apt install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y && \
+wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb && \
+sudo dpkg -i wkhtmltox_0.12.6.1-2.jammy_amd64.deb && \
+sudo cp /usr/local/bin/wkhtmlto* /usr/bin/ && \
+sudo chmod a+x /usr/bin/wk*
+sudo rm wk* && \
+
 echo -e "${GREEN}Done!${NC}"
 sleep 1
 echo -e "\n"
 #... And mariadb with some extra needed applications.
 echo -e "${YELLOW}Now installing MariaDB and other necessary packages...${NC}"
 sleep 2
-sudo apt -qq install mariadb-server mariadb-client xvfb libfontconfig xfonts-75dpi fontconfig libxrender1 -y
+sudo apt install mariadb-server mariadb-client xvfb libfontconfig xfonts-75dpi fontconfig libxrender1 -y
 echo -e "${GREEN}MariaDB and other packages have been installed successfully.${NC}"
 sleep 2
 
@@ -256,7 +262,7 @@ sudo pip3 install frappe-bench
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
 echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init frappe-bench --version version-14 --verbose --install-app erpnext --version version-14
+bench init V14 --version version-14 --verbose --install-app erpnext --version version-14
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -270,10 +276,10 @@ sleep 2
 # Install expect tool only if needed
 echo $passwrd | sudo -S apt -qq install expect -y
 
-echo -e "${YELLOW}Now setting up your site. Please wait...${NC}"
+echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 # Change directory to frappe-bench
-cd frappe-bench && \
+cd V14 && \
 
 sudo sed -i '/port 6379/a port 11000' /etc/redis/redis.conf
 sudo service redis-server restart
@@ -308,8 +314,7 @@ sudo service redis-server restart
 
 echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
 read -p "Response: " continue_prod
-continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
-
+continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')
 case "$continue_prod" in
     "yes" | "y")
 
@@ -373,7 +378,7 @@ case "$continue_prod" in
                 sleep 2
             fi
             # Install Certbot
-            sudo apt -qq install certbot python3-certbot-nginx -y
+            sudo apt install certbot python3-certbot-nginx -y
             
             # Obtain and Install the certificate
             echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
