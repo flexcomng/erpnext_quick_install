@@ -178,6 +178,8 @@ sudo dpkg -i wkhtmltox_0.12.6.1-2.jammy_amd64.deb && \
 sudo cp /usr/local/bin/wkhtmlto* /usr/bin/ && \
 sudo chmod a+x /usr/bin/wk*
 sudo rm wk* && \
+sudo apt --fix-broken install -y && \
+sudo apt install fontconfig xvfb libfontconfig xfonts-base xfonts-75dpi libxrender1 -y && \
 
 echo -e "${GREEN}Done!${NC}"
 sleep 1
@@ -185,7 +187,7 @@ echo -e "\n"
 #... And mariadb with some extra needed applications.
 echo -e "${YELLOW}Now installing MariaDB and other necessary packages...${NC}"
 sleep 2
-sudo apt install mariadb-server mariadb-client xvfb libfontconfig xfonts-75dpi fontconfig libxrender1 -y
+sudo apt install mariadb-server mariadb-client -y
 echo -e "${GREEN}MariaDB and other packages have been installed successfully.${NC}"
 sleep 2
 
@@ -262,7 +264,7 @@ sudo pip3 install frappe-bench
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
 echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init V14 --version version-14 --verbose --install-app erpnext --version version-14
+bench init frappe-bench --version version-14 --verbose --install-app erpnext --version version-14
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -279,7 +281,7 @@ echo $passwrd | sudo -S apt -qq install expect -y
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 # Change directory to frappe-bench
-cd V14 && \
+cd frappe-bench && \
 
 sudo sed -i '/port 6379/a port 11000' /etc/redis/redis.conf
 sudo service redis-server restart
@@ -377,8 +379,13 @@ case "$continue_prod" in
                 echo -e "${GREEN}Package fixed${NC}"
                 sleep 2
             fi
-            # Install Certbot
-            sudo apt install certbot python3-certbot-nginx -y
+            # Install Certbot Clasic
+            # sudo apt install certbot python3-certbot-nginx -y
+            sudo apt install snapd -y && \
+            sudo snap install core && \
+            sudo snap refresh core && \
+            sudo snap install --classic certbot && \
+            sudo ln -s /snap/bin/certbot /usr/bin/certbot
             
             # Obtain and Install the certificate
             echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
