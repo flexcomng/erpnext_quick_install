@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 # # Setting error handler
-handle_error() {
-    local line=$1
-    local exit_code=$?
-    echo "An error occurred on line $line with exit status $exit_code"
-    exit $exit_code
-}
+# handle_error() {
+#     local line=$1
+#     local exit_code=$?
+#     echo "An error occurred on line $line with exit status $exit_code"
+#     exit $exit_code
+# }
 
-trap 'handle_error $LINENO' ERR
-set -e
+# trap 'handle_error $LINENO' ERR
+# set -e
 
 # Retrieve server IP
 server_ip=$(hostname -I | awk '{print $1}')
