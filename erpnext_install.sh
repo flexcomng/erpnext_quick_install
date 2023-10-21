@@ -107,23 +107,72 @@ ask_twice() {
         fi
     done
 }
-echo -e "\n"
 echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
 echo -e "\n"
 sleep 3
 
+# Prompt user for version selection with a preliminary message
+echo -e "${YELLOW}Please enter the number of the corresponding ERPNext version you wish to install:${NC}"
+
+versions=("Version 13" "Version 14" "Version 15")
+select version_choice in "${versions[@]}"; do
+    case $REPLY in
+        1) bench_version="version-13"; break;;
+        2) bench_version="version-14"; break;;
+        3) bench_version="version-15"; break;;
+        *) echo -e "${RED}Invalid option. Please select a valid version.${NC}";;
+    esac
+done
+
+# Confirm the version choice with the user
+echo -e "${GREEN}You have selected $version_choice for installation.${NC}"
+echo -e "${LIGHT_BLUE}Do you wish to continue? (yes/no)${NC}"
+read -p "Response: " continue_install
+continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
+
+while [[ "$continue_install" != "yes" && "$continue_install" != "y" && "$continue_install" != "no" && "$continue_install" != "n" ]]; do
+    echo -e "${RED}Invalid response. Please answer with 'yes' or 'no'.${NC}"
+    echo -e "${LIGHT_BLUE}Do you wish to continue with the installation of $version_choice? (yes/no)${NC}"
+    read -p "Response: " continue_install
+    continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
+done
+
+if [[ "$continue_install" == "no" || "$continue_install" == "n" ]]; then
+    # If user chooses 'no', loop back to version selection
+    continue
+else
+    echo -e "${GREEN}Proceeding with the installation of $version_choice.${NC}"
+
+fi
+sleep 2
+
+# Check OS compatibility for Version 15
+if [[ "$bench_version" == "version-15" ]]; then
+    if [[ "$(lsb_release -si)" != "Ubuntu" ]]; then
+        echo -e "${RED}Your Distro is not supported for Version 15.${NC}"
+        exit 1
+    elif [[ "$(lsb_release -rs)" < "22.04" ]]; then
+        echo -e "${RED}Your Ubuntu version is below the minimum version required to support Version 15.${NC}"
+        exit 1
+    fi
+fi
+
+# Check OS and version compatibility for all versions
+check_os
 #First Let's take you home
 cd $(sudo -u $USER echo $HOME)
 
 #Next let's set some important parameters.
 #We will need your required SQL root passwords
-echo -e "${YELLOW}First let's set some important parameters...${NC}"
+echo -e "${YELLOW}Now let's set some important parameters...${NC}"
 sleep 1
 echo -e "${YELLOW}We will need your required SQL root password${NC}"
 sleep 1
 sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
 sleep 1
 echo -e "\n"
+check_os
+
 
 #Now let's make sure your instance has the most updated packages
 echo -e "${YELLOW}Updating system packages...${NC}"
@@ -242,7 +291,14 @@ echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This
 # Source .profile to load the new environment variables in the current session
 source ~/.profile
 
-nvm install 16
+# Conditional Node.js installation based on the version of ERPNext selected
+if [[ "$bench_version" == "version-15" ]]; then
+    nvm install 18
+    node_version="18"
+else
+    nvm install 16
+    node_version="16"
+fi
 
 sudo apt-get -qq install npm -y
 sudo npm install -g yarn
@@ -253,7 +309,7 @@ sleep 2
 if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
     python3.10 -m venv $USER && \
     source $USER/bin/activate
-    nvm use 16
+    nvm use $node_version
 fi
 
 #Install bench
@@ -264,7 +320,7 @@ sudo pip3 install frappe-bench
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
 echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init frappe-bench --version version-14 --verbose --install-app erpnext --version version-14
+bench init frappe-bench --version $bench_version --verbose --install-app erpnext --version $bench_version
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -283,8 +339,7 @@ sleep 1
 # Change directory to frappe-bench
 cd frappe-bench && \
 
-sudo sed -i '/port 6379/a port 11000' /etc/redis/redis.conf
-sudo service redis-server restart
+sudo chmod -R o+rx /home/$(echo $USER)
 
 
 # Create new site using expect
@@ -311,8 +366,6 @@ expect eof
 ")
 echo "$SITE_SETUP"
 
-sudo sed -i '/port 11000/d' /etc/redis/redis.conf
-sudo service redis-server restart
 
 echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
 read -p "Response: " continue_prod
@@ -344,8 +397,6 @@ case "$continue_prod" in
     echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
     sleep 1
 
-    # Restart bench
-    bench restart && \
 
     #Now to make sure the environment is fully setup
     sudo chmod 755 /home/$(echo $USER)
@@ -359,7 +410,7 @@ case "$continue_prod" in
 
     read -p "Response: " continue_ssl
 
-    continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+    continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
 
     case "$continue_ssl" in
         "yes" | "y")
