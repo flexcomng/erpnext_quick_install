@@ -457,7 +457,7 @@ case "$continue_prod" in
     fi
 
     echo -e "${GREEN}--------------------------------------------------------------------------------"
-    echo -e "Congratulations! You have successfully installed ERPNext version 14."
+    echo -e "Congratulations! You have successfully installed ERPNext $version_choice."
     echo -e "You can start using your new ERPNext installation by visiting https://$site_name"
     echo -e "(if you have enabled SSL and used a Fully Qualified Domain Name"
     echo -e "during installation) or http://$server_ip to begin."
@@ -470,6 +470,11 @@ case "$continue_prod" in
     echo -e "${YELLOW}Getting your site ready for development...${NC}"
     sleep 2
     source ~/.profile
+    if [[ "$bench_version" == "version-15" ]]; then
+        nvm alias default 18
+    else
+        nvm alias default 16
+    fi
     nvm alias default 16
     bench use $site_name
     bench build
@@ -477,7 +482,7 @@ case "$continue_prod" in
     sleep 5
 
     echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
-    echo -e "Congratulations! You have successfully installed Frappe and ERPNext version 14 Development Enviromment."
+    echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Enviromment."
     echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
     echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
     echo -e "Enjoy development with Frappe!"
