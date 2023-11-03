@@ -10,20 +10,32 @@
       register: certbot_email
       when: continue_ssl.user_input | lower in ['yes', 'y']
 
-    - name: Install snapd for Certbot
+    - name: Install snapd
+      become: yes
       apt:
         name: snapd
         state: latest
-      when: ansible_distribution == 'Debian'
+        update_cache: yes
 
-    - name: Install Certbot
+    - name: Install Certbot with snap
+      become: yes
       block:
-        - command: snap install core
-        - command: snap refresh core
-        - command: snap install --classic certbot
-        - command: ln -sf /snap/bin/certbot /usr/bin/certbot
-      when: ansible_distribution == 'Debian'
+        - name: Install snap core
+          command: snap install core
+
+        - name: Refresh snap core
+          command: snap refresh core
+
+        - name: Install Certbot
+          command: snap install --classic certbot
+
+        - name: Create symlink for Certbot
+          file:
+            src: /snap/bin/certbot
+            dest: /usr/bin/certbot
+            state: link
+            force: yes
 
     - name: Obtain and Install the SSL certificate
+      become: yes
       command: certbot --nginx --non-interactive --agree-tos --email "{{ certbot_email.user_input }}" -d "{{ site_name }}"
-  when: continue_ssl.user_input | lower in ['yes', 'y']
