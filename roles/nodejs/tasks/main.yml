@@ -36,10 +36,21 @@
     name: yarn
     global: yes
 
+- name: Check if Python 3.10 is installed
+  command: python3.10 --version
+  register: python_version_output
+  ignore_errors: true
+  changed_when: false
+
+- name: Set python_version fact
+  set_fact:
+    python_version: "{{ python_version_output.stdout | regex_search('Python\\s(3\\.10\\.\\d+)', '\\1') | first }}"
+  when: python_version_output.stdout is defined
+
 - name: Set up Python virtual environment
   shell: "python3.10 -m venv {{ ansible_user_id }} && source {{ ansible_user_id }}/bin/activate"
   args:
     creates: "{{ ansible_env.HOME }}/{{ ansible_user_id }}/bin/activate"
-  when: python_version is version('3.10', '<')
+  when: python_version is defined and python_version is version('3.10', '<')
   environment:
     NVM_DIR: "{{ ansible_env.HOME }}/.nvm"
