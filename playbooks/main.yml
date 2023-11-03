@@ -39,12 +39,7 @@
 
     - name: Check operating system compatibility
       import_tasks: ../tasks/check_os_compatibility.yml
-    
-    - name: Prompt for MariaDB root password
-      pause:
-        prompt: "Enter your required SQL root password"
-        private: yes
-      register: mariadb_root_pass_prompt
+  
 
   roles:
     - role: update_system
@@ -56,7 +51,7 @@
         - ansible_distribution_version is version_compare('22.04', '<')
     - role: secure_mariadb
       vars:
-        mariadb_root_password: "{{ mariadb_root_pass_prompt.user_input }}"
+        mariadb_root_password: "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}"
     - role: nodejs
       vars:
         node_version: "{{ node_version }}"
@@ -72,7 +67,7 @@
         recurse: yes
 
     - name: Create a new ERPNext site
-      command: bench new-site {{ site_name }} --admin-password {{ admin_password.user_input }} --mariadb-root-password {{ mariadb_root_pass_prompt.user_input }} --install-app erpnext
+      command: bench new-site {{ site_name }} --admin-password {{ admin_password.user_input }} --mariadb-root-password "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" --install-app erpnext
       args:
         chdir: "{{ ansible_env.HOME }}/frappe-bench"
       environment:

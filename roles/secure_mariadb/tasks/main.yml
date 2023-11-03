@@ -7,13 +7,27 @@
   set_fact:
     is_mariadb_configured: "{{ mariadb_configured.stat.exists }}"
 
+- name: Install PyMySQL
+  pip:
+    name: pymysql
+  become: yes
+
+- name: Install MariaDB Server and Client
+  apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+    state: present
+    update_cache: yes
+  become: yes
+
 - name: Secure MariaDB installation
   block:
-    - name: Set the root password for MariaDB
+    - name: Use MariaDB root password from environment variable
       mysql_user:
         name: root
         host_all: yes
-        password: "{{ mariadb_root_password }}"
+        password: "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}"
         check_implicit_admin: yes
         login_user: root
         login_password: ""
