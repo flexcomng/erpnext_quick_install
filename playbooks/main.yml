@@ -1,6 +1,30 @@
 - name: Preliminary Checks and Setup
   hosts: localhost
   gather_facts: yes
+  become: no 
+
+  tasks:
+    - name: Determine non-root user
+      command: whoami
+      register: whoami
+      changed_when: false
+
+    - name: Set non-root user fact
+      set_fact:
+        non_root_user: "{{ whoami.stdout }}"
+
+    - name: Find non-root user home directory
+      command: sh -c 'echo $HOME'
+      register: user_home
+      changed_when: false
+
+    - name: Set non-root user home directory fact
+      set_fact:
+        non_root_home: "{{ user_home.stdout }}"
+
+- name: Begin Main Setup
+  hosts: localhost
+  gather_facts: yes
   become: yes
 
   vars_prompt:
@@ -63,6 +87,7 @@
         group: "{{ ansible_user_id }}"
         mode: '0755'
         recurse: yes
+      become: yes
 
     - name: Create a new ERPNext site
       command: bench new-site {{ site_name }} --admin-password {{ admin_password.user_input }} --mariadb-root-password "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" --install-app erpnext

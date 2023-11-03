@@ -2,11 +2,15 @@
   pip:
     name: frappe-bench
     executable: pip3
+  become: no
 
 - name: Initialize frappe-bench with ERPNext
-  command: bench init frappe-bench --frappe-branch version-{{ erpnext_version }} --verbose --install-app erpnext --erpnext-branch version-{{ erpnext_version }}
+  command: >
+    bench init frappe-bench --version version-{{ erpnext_version }}
+    --verbose --install-app erpnext --version version-{{ erpnext_version }}
   args:
-    chdir: "{{ ansible_env.HOME }}"
-    creates: "{{ ansible_env.HOME }}/frappe-bench"
+    chdir: "{{ non_root_home }}"
+    creates: "{{ non_root_home }}/frappe-bench"
   environment:
-    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.local/bin"
+    PATH: "{{ ansible_env.PATH }}:{{ non_root_home }}/.local/bin"
+  become: no
