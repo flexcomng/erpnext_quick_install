@@ -1,0 +1,29 @@
+- name: Ask if the user wants to install SSL
+  pause:
+    prompt: "Would you like to install SSL? (yes/no)"
+  register: continue_ssl
+
+- block:
+    - name: Prompt user for email address
+      pause:
+        prompt: "Enter your email address for SSL certificate"
+      register: certbot_email
+      when: continue_ssl.user_input | lower in ['yes', 'y']
+
+    - name: Install snapd for Certbot
+      apt:
+        name: snapd
+        state: latest
+      when: ansible_distribution == 'Debian'
+
+    - name: Install Certbot
+      block:
+        - command: snap install core
+        - command: snap refresh core
+        - command: snap install --classic certbot
+        - command: ln -sf /snap/bin/certbot /usr/bin/certbot
+      when: ansible_distribution == 'Debian'
+
+    - name: Obtain and Install the SSL certificate
+      command: certbot --nginx --non-interactive --agree-tos --email "{{ certbot_email.user_input }}" -d "{{ site_name }}"
+  when: continue_ssl.user_input | lower in ['yes', 'y']

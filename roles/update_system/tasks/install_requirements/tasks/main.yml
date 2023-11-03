@@ -1,0 +1,38 @@
+- name: Install basic Python packages and Redis Server
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - git
+    - python3-dev
+    - python3-setuptools
+    - python3-venv
+    - python3-pip
+    - python3-distutils
+    - redis-server
+
+- name: Download wkhtmltopdf
+  get_url:
+    url: "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+    dest: "/tmp/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+
+- name: Install wkhtmltopdf
+  apt:
+    deb: "/tmp/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+
+- name: Install additional font and rendering packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - fontconfig
+    - xvfb
+    - libfontconfig
+    - xfonts-base
+    - xfonts-75dpi
+    - libxrender1
+
+- name: Clean up downloaded wkhtmltopdf package
+  file:
+    path: "/tmp/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+    state: absent

@@ -1,0 +1,41 @@
+- name: Install NVM (Node Version Manager)
+  shell: |
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+  args:
+    creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+
+- name: Add NVM environment variables to .profile
+  lineinfile:
+    path: "{{ ansible_env.HOME }}/.profile"
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - 'export NVM_DIR="$HOME/.nvm"'
+    - '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
+    - '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"'
+
+- name: Source .profile to load NVM
+  shell: ". {{ ansible_env.HOME }}/.profile"
+
+- name: Install Node.js version based on ERPNext requirements
+  shell: "nvm install {{ node_version }}"
+  environment:
+    NVM_DIR: "{{ ansible_env.HOME }}/.nvm"
+
+- name: Install npm
+  apt:
+    name: npm
+    state: present
+
+- name: Install yarn
+  npm:
+    name: yarn
+    global: yes
+
+- name: Set up Python virtual environment
+  shell: "python3.10 -m venv {{ ansible_user_id }} && source {{ ansible_user_id }}/bin/activate"
+  args:
+    creates: "{{ ansible_env.HOME }}/{{ ansible_user_id }}/bin/activate"
+  when: python_version is version('3.10', '<')
+  environment:
+    NVM_DIR: "{{ ansible_env.HOME }}/.nvm"

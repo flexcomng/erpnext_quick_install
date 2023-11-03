@@ -1,0 +1,39 @@
+- name: Set the root password for MariaDB
+  mysql_user:
+    name: root
+    host_all: yes
+    password: "{{ mariadb_root_password }}"
+    check_implicit_admin: yes
+    login_user: root
+    login_password: ""
+
+- name: Remove anonymous MariaDB users
+  mysql_user:
+    user: ""
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Remove the MariaDB test database
+  mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Ensure the MariaDB server is started
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Copy my.cnf configuration file
+  template:
+    src: my.cnf.j2
+    dest: /etc/mysql/my.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart mariadb

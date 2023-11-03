@@ -1,0 +1,68 @@
+- name: Check if Python 3.10 is installed
+  command: python3.10 --version
+  register: python_version
+  ignore_errors: true
+  changed_when: false
+
+- name: Install dependencies for building Python
+  apt:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - build-essential
+    - zlib1g-dev
+    - libncurses5-dev
+    - libgdbm-dev
+    - libnss3-dev
+    - libssl-dev
+    - libreadline-dev
+    - libffi-dev
+    - libsqlite3-dev
+    - wget
+    - libbz2-dev
+  when: python_version.failed
+
+- name: Download Python 3.10 source
+  get_url:
+    url: "https://www.python.org/ftp/python/3.10.11/Python-3.10.11.tgz"
+    dest: "/tmp/Python-3.10.11.tgz"
+    mode: '0644'
+  when: python_version.failed
+
+- name: Extract Python source
+  unarchive:
+    src: "/tmp/Python-3.10.11.tgz"
+    dest: "/tmp"
+    creates: "/tmp/Python-3.10.11"
+    remote_src: yes
+  when: python_version.failed
+
+- name: Compile and Install Python 3.10
+  block:
+    - name: Configure Python 3.10
+      command: "./configure --prefix=/usr/local --enable-optimizations --enable-shared LDFLAGS=-Wl,-rpath=/usr/local/lib"
+      args:
+        chdir: "/tmp/Python-3.10.11"
+        creates: "/usr/local/bin/python3.10"
+
+    - name: Make Python 3.10
+      command: "make -j {{ ansible_processor_vcpus }}"
+      args:
+        chdir: "/tmp/Python-3.10.11"
+
+    - name: Install Python 3.10
+      command: "make altinstall"
+      args:
+        chdir: "/tmp/Python-3.10.11"
+
+    - name: Upgrade pip for Python 3.10
+      command: "python3.10 -m pip install --upgrade pip"
+      args:
+        creates: "/usr/local/bin/pip3.10"
+  when: python_version.failed
+
+- name: Clean up downloaded Python source archive
+  file:
+    path: "/tmp/Python-3.10.11.tgz"
+    state: absent
+  when: python_version.failed

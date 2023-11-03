@@ -1,0 +1,12 @@
+- name: Install frappe-bench
+  pip:
+    name: frappe-bench
+    executable: pip3
+
+- name: Initialize frappe-bench with ERPNext
+  command: bench init frappe-bench --frappe-branch version-{{ erpnext_version }} --verbose --install-app erpnext --erpnext-branch version-{{ erpnext_version }}
+  args:
+    chdir: "{{ ansible_env.HOME }}"
+    creates: "{{ ansible_env.HOME }}/frappe-bench"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.local/bin"

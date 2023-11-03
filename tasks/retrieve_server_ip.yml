@@ -1,0 +1,9 @@
+- name: Retrieve server IP
+  command: hostname -I
+  register: server_ip
+  changed_when: false  # This task does not change the system
+
+- name: Print server IP
+  debug:
+    msg: "The server IP address is {{ server_ip.stdout.split(' ')[0] }}"
+  when: server_ip.stdout is defined

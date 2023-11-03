@@ -1,0 +1,29 @@
+- name: Setup Supervisor and Nginx configuration for production
+  command: bench setup production {{ ansible_user_id }}
+  args:
+    chdir: "{{ ansible_env.HOME }}/frappe-bench"
+
+- name: Apply necessary permissions to Supervisor
+  lineinfile:
+    path: /etc/supervisor/supervisord.conf
+    line: 'chown={{ ansible_user_id }}:{{ ansible_user_id }}'
+    insertafter: '^\\[unix_http_server\\]'
+
+- name: Restart Supervisor service
+  service:
+    name: supervisor
+    state: restarted
+
+- name: Enable and resume the scheduler for the site
+  command: bench --site {{ site_name }} scheduler {{ item }}
+  loop:
+    - enable
+    - resume
+  args:
+    chdir: "{{ ansible_env.HOME }}/frappe-bench"
+
+- name: Optimize environment permissions
+  file:
+    path: "{{ ansible_env.HOME }}"
+    mode: '0755'
+    recurse: yes

@@ -1,0 +1,142 @@
+---
+- name: Preliminary Checks and Setup
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+
+  vars_prompt:
+    - name: "erpnext_version"
+      prompt: "Enter the ERPNext version to install (13, 14, or 15)"
+      private: no
+      first_run: true
+
+    - name: "site_name"
+      prompt: "Enter the site name (If you wish to install SSL later, please enter a FQDN)"
+      private: no
+      first_run: true
+
+    - name: "admin_password"
+      prompt: "Enter the Administrator password"
+      private: yes
+      first_run: true
+      confirm: true
+      confirm_prompt: "Re-enter the Administrator password"
+    
+    vars:
+      node_version: "{{ '18' if erpnext_version == '15' else '16' }}"
+
+  pre_tasks:
+    - name: Confirm the version choice with the user
+      pause:
+        prompt: "You have selected ERPNext version {{ erpnext_version }} for installation. Do you wish to continue? (yes/no)"
+      register: continue_install
+      failed_when: continue_install.user_input | lower != 'yes'
+
+    - name: Retrieve server IP address
+      shell: hostname -I | awk '{print $1}'
+      register: server_ip
+      changed_when: false
+
+    - name: Print server IP
+      debug:
+        msg: "The server IP address is {{ server_ip.stdout }}"
+
+    - name: Check operating system compatibility
+      import_tasks: ../tasks/check_os_compatibility.yml
+      vars:
+        erpnext_version: "{{ erpnext_version }}"
+    
+    - name: Prompt for MariaDB root password
+      pause:
+        prompt: "Enter your required SQL root password"
+      register: mariadb_root_pass_prompt
+
+  roles:
+    - role: update_system
+    - role: install_requirements
+    - role: install_python
+      when:
+        - erpnext_version == '14'
+        - ansible_distribution == 'Ubuntu'
+        - ansible_distribution_version is version_compare('22.04', '<')
+    - role: secure_mariadb
+      vars:
+        mariadb_root_password: "{{ mariadb_root_pass_prompt.user_input }}"
+    - role: nodejs
+      vars:
+        node_version: "{{ node_version }}"
+    - role: bench
+
+  tasks:
+    - name: Set file permissions for the home directory
+      file:
+        path: "{{ ansible_env.HOME }}"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0755'
+        recurse: yes
+
+    - name: Create a new ERPNext site
+      command: bench new-site {{ site_name }} --admin-password {{ admin_password }} --mariadb-root-password {{ mariadb_root_password }} --install-app erpnext
+      args:
+        chdir: "{{ ansible_env.HOME }}/frappe-bench"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.local/bin"
+
+    - name: Ask if the user wants to continue with production install
+      pause:
+        prompt: "Would you like to continue with production install? (yes/no)"
+      register: continue_prod
+
+    - set_fact:
+        install_type: "production"
+      when: continue_prod.user_input | lower in ['yes', 'y']
+
+    - set_fact:
+        install_type: "development"
+      when: continue_prod.user_input | lower in ['no', 'n']
+
+    - block:
+        - name: Include tasks to setup production
+          include_tasks: ../tasks/setup_production.yml
+        - name: Include tasks to setup SSL (optional)
+          include_tasks: ../tasks/setup_ssl.yml
+      when: install_type == "production"
+      become: yes
+
+    - block:
+        - name: Getting site ready for development
+          debug:
+            msg: "Getting your site ready for development..."
+        - name: Set NVM default Node.js version
+          shell: nvm alias default {{ node_version }}
+          args:
+            executable: /bin/bash
+        - name: Use the site with bench
+          command: bench use {{ site_name }}
+          args:
+            chdir: "{{ ansible_env.HOME }}/frappe-bench"
+        - name: Build the bench site
+          command: bench build
+          args:
+            chdir: "{{ ansible_env.HOME }}/frappe-bench"
+      when: install_type == "development"
+      become: yes
+
+    - name: Display success message for production setup
+      debug:
+        msg: |
+          Congratulations! You have successfully installed ERPNext {{ erpnext_version }} in production mode.
+          You can start using your new ERPNext installation by visiting {{ 'https://' + site_name if site_name != 'no' else 'http://' + server_ip.stdout }}.
+          Install additional apps as required. Visit https://docs.erpnext.com for Documentation.
+          Enjoy using ERPNext!
+      when: install_type == "production"
+
+    - name: Display success message for development setup
+      debug:
+        msg: |
+          Congratulations! You have successfully installed Frappe and ERPNext {{ erpnext_version }} Development Environment.
+          Start your instance by running 'bench start' to start your server and visiting http://{{ server_ip.stdout }}:8000.
+          Install additional apps as required. Visit https://frappeframework.com for Developer Documentation.
+          Enjoy development with Frappe!
+      when: install_type == "development"
