@@ -23,12 +23,10 @@ install_ansible() {
 
 # Function to run the Ansible playbook
 run_playbook() {
-    # Navigate to the playbook directory
-    cd erpnext_quick_install/playbooks/ || exit
 
     # Execute the playbook
     echo "Running Ansible playbook..."
-    ansible-playbook main.yml
+    ansible-playbook playbooks/main.yml
 }
 
 # Check if Ansible is installed and install if not

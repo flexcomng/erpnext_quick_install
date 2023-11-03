@@ -1,4 +1,3 @@
----
 - name: Preliminary Checks and Setup
   hosts: localhost
   gather_facts: yes
@@ -8,22 +7,19 @@
     - name: "erpnext_version"
       prompt: "Enter the ERPNext version to install (13, 14, or 15)"
       private: no
-      first_run: true
 
     - name: "site_name"
       prompt: "Enter the site name (If you wish to install SSL later, please enter a FQDN)"
       private: no
-      first_run: true
 
     - name: "admin_password"
       prompt: "Enter the Administrator password"
       private: yes
-      first_run: true
-      confirm: true
-      confirm_prompt: "Re-enter the Administrator password"
-    
-    vars:
-      node_version: "{{ '18' if erpnext_version == '15' else '16' }}"
+      confirm: yes
+
+  vars:
+    node_version: "{{ '18' if erpnext_version == '15' else '16' }}"
+    install_type: "development" 
 
   pre_tasks:
     - name: Confirm the version choice with the user
@@ -43,12 +39,11 @@
 
     - name: Check operating system compatibility
       import_tasks: ../tasks/check_os_compatibility.yml
-      vars:
-        erpnext_version: "{{ erpnext_version }}"
     
     - name: Prompt for MariaDB root password
       pause:
         prompt: "Enter your required SQL root password"
+        private: yes
       register: mariadb_root_pass_prompt
 
   roles:
@@ -77,7 +72,7 @@
         recurse: yes
 
     - name: Create a new ERPNext site
-      command: bench new-site {{ site_name }} --admin-password {{ admin_password }} --mariadb-root-password {{ mariadb_root_password }} --install-app erpnext
+      command: bench new-site {{ site_name }} --admin-password {{ admin_password.user_input }} --mariadb-root-password {{ mariadb_root_pass_prompt.user_input }} --install-app erpnext
       args:
         chdir: "{{ ansible_env.HOME }}/frappe-bench"
       environment:

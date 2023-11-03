@@ -11,14 +11,24 @@
     - python3-distutils
     - redis-server
 
+- name: Determine system architecture
+  command: dpkg --print-architecture
+  register: architecture
+
+- name: Set wkhtmltopdf download URL based on architecture
+  set_fact:
+    wkhtmltopdf_url: "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_{{ architecture.stdout }}.deb"
+    wkhtmltopdf_deb: "/tmp/wkhtmltox_0.12.6.1-2.jammy_{{ architecture.stdout }}.deb"
+
 - name: Download wkhtmltopdf
   get_url:
-    url: "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
-    dest: "/tmp/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+    url: "{{ wkhtmltopdf_url }}"
+    dest: "{{ wkhtmltopdf_deb }}"
 
 - name: Install wkhtmltopdf
   apt:
-    deb: "/tmp/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+    deb: "{{ wkhtmltopdf_deb }}"
+
 
 - name: Install additional font and rendering packages
   apt:
