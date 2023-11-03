@@ -16,6 +16,10 @@
       private: yes
       confirm: yes
 
+  vars:
+    node_version: "{{ '18' if erpnext_version == '15' else '16' }}"
+    install_type: "development"
+
   pre_tasks:
     - name: Determine non-root user
       command: whoami
@@ -60,8 +64,8 @@
 
     - name: Check operating system compatibility
       import_tasks: ../tasks/check_os_compatibility.yml
+    
   
-
   roles:
     - role: update_system
     - role: install_requirements
@@ -119,17 +123,17 @@
           debug:
             msg: "Getting your site ready for development..."
         - name: Set NVM default Node.js version
-          shell: nvm alias default {{ node_version }}
+          shell: nvm use {{ node_version }}
           args:
             executable: /bin/bash
         - name: Use the site with bench
           command: bench use {{ site_name }}
           args:
-            chdir: "{{ ansible_env.HOME }}/frappe-bench"
+            chdir: "{{ non_root_home }}/frappe-bench"
         - name: Build the bench site
           command: bench build
           args:
-            chdir: "{{ ansible_env.HOME }}/frappe-bench"
+            chdir: "{{ non_root_home }}/frappe-bench"
       when: install_type == "development"
       become: yes
 

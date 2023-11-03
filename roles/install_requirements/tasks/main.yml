@@ -1,4 +1,4 @@
-- name: Install basic Python packages and Redis Server
+- name: Install Required Python packages and Redis Server
   apt:
     name: "{{ item }}"
     state: present
@@ -10,6 +10,7 @@
     - python3-pip
     - python3-distutils
     - redis-server
+  become: yes
 
 - name: Determine system architecture
   command: dpkg --print-architecture
@@ -28,6 +29,7 @@
 - name: Install wkhtmltopdf
   apt:
     deb: "{{ wkhtmltopdf_deb }}"
+  become: yes
 
 
 - name: Install additional font and rendering packages
@@ -41,6 +43,7 @@
     - xfonts-base
     - xfonts-75dpi
     - libxrender1
+  become: yes
 
 - name: Clean up downloaded wkhtmltopdf package
   file:

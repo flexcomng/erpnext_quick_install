@@ -1,4 +1,4 @@
-- name: Check Ubuntu compatibility
+- name: Check Distro compatibility
   fail:
     msg: "ERPNext requires Ubuntu 20.04 LTS or newer."
   when: 
@@ -6,7 +6,7 @@
     - ansible_distribution == 'Ubuntu'
     - ansible_distribution_version is version('20.04', '<')
 
-- name: Specific check for ERPNext 15 on Ubuntu
+- name: Validate additional ERPNext 15 requirements
   fail:
     msg: "ERPNext 15 requires Ubuntu 22.04 or newer."
   when: 
@@ -21,7 +21,7 @@
     - ansible_distribution == 'Debian'
     - ansible_distribution_version is version('9', '<')
 
-- name: Fail for unsupported distributions
+- name: Check for unsupported distributions
   fail:
     msg: "This script is only compatible with Ubuntu or Debian."
   when: ansible_distribution not in ['Ubuntu', 'Debian']

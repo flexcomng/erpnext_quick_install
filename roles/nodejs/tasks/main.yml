@@ -38,11 +38,13 @@
   apt:
     name: npm
     state: present
+  become: yes
 
 - name: Install yarn
   npm:
     name: yarn
     global: yes
+  become: yes
 
 - name: Check if Python 3.10 is installed
   command: python3.10 --version
@@ -56,9 +58,9 @@
   when: python_version_output.stdout is defined
 
 - name: Set up Python virtual environment
-  shell: "python3.10 -m venv {{ ansible_user_id }} && source {{ ansible_user_id }}/bin/activate"
+  shell: "python3.10 -m venv {{ non_root_user }} && source {{ non_root_user }}/bin/activate"
   args:
-    creates: "{{ ansible_env.HOME }}/{{ ansible_user_id }}/bin/activate"
+    creates: "{{ non_root_home }}/{{ non_root_user }}/bin/activate"
   when: python_version is defined and python_version is version('3.10', '<')
   environment:
-    NVM_DIR: "{{ ansible_env.HOME }}/.nvm"
+    NVM_DIR: "{{ non_root_home }}/.nvm"

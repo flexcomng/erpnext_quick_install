@@ -64,9 +64,9 @@ export MARIADB_ROOT_PASSWORD="$sqlpasswrd"
 echo -e "\n"
 run_playbook() {
     echo "Running Ansible playbook..."
-    ansible-playbook playbooks/main.yml -vvv
+    ansible-playbook playbooks/main.yml
 }
-echo -e "\n"
-install_ansible
 
+install_ansible
+sleep 3
 run_playbook
