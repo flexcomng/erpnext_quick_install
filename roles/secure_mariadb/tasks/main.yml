@@ -1,39 +1,59 @@
-- name: Set the root password for MariaDB
-  mysql_user:
-    name: root
-    host_all: yes
-    password: "{{ mariadb_root_password }}"
-    check_implicit_admin: yes
-    login_user: root
-    login_password: ""
+- name: Check if MariaDB is already configured
+  stat:
+    path: "{{ ansible_env.HOME }}/.mariadb_configured"
+  register: mariadb_configured
 
-- name: Remove anonymous MariaDB users
-  mysql_user:
-    user: ""
-    host_all: yes
-    state: absent
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
+- name: Set fact for MariaDB configuration status
+  set_fact:
+    is_mariadb_configured: "{{ mariadb_configured.stat.exists }}"
 
-- name: Remove the MariaDB test database
-  mysql_db:
-    name: test
-    state: absent
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
+- name: Secure MariaDB installation
+  block:
+    - name: Set the root password for MariaDB
+      mysql_user:
+        name: root
+        host_all: yes
+        password: "{{ mariadb_root_password }}"
+        check_implicit_admin: yes
+        login_user: root
+        login_password: ""
 
-- name: Ensure the MariaDB server is started
-  service:
-    name: mariadb
-    state: started
-    enabled: yes
+    - name: Remove anonymous MariaDB users
+      mysql_user:
+        user: ""
+        host_all: yes
+        state: absent
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
 
-- name: Copy my.cnf configuration file
-  template:
-    src: my.cnf.j2
-    dest: /etc/mysql/my.cnf
-    owner: root
-    group: root
-    mode: '0644'
-  notify:
-    - restart mariadb
+    - name: Remove the MariaDB test database
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+
+    - name: Ensure the MariaDB server is started
+      service:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Copy my.cnf configuration file
+      template:
+        src: my.cnf.j2
+        dest: /etc/mysql/my.cnf
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - restart mariadb
+
+    - name: Create hidden secret file to indicate MariaDB is configured
+      file:
+        path: "{{ ansible_env.HOME }}/.mariadb_configured"
+        state: touch
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0600'
+  when: not is_mariadb_configured | default(false)
