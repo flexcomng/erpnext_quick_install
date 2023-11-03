@@ -2,3 +2,5 @@
   service:
     name: mariadb
     state: restarted
+    enabled: yes
+  become: yes

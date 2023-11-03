@@ -1,7 +1,7 @@
 - name: Setup Supervisor and Nginx configuration for production
-  command: bench setup production {{ ansible_user_id }}
+  command: bench setup production {{ non_root_user }}
   args:
-    chdir: "{{ ansible_env.HOME }}/frappe-bench"
+    chdir: "{{ non_root_home }}/frappe-bench"
 
 - name: Apply necessary permissions to Supervisor
   lineinfile:
@@ -20,10 +20,15 @@
     - enable
     - resume
   args:
-    chdir: "{{ ansible_env.HOME }}/frappe-bench"
+    chdir: "{{ non_root_home }}/frappe-bench"
 
 - name: Optimize environment permissions
   file:
-    path: "{{ ansible_env.HOME }}"
+    path: "{{ non_root_home}}"
     mode: '0755'
     recurse: yes
+
+- name: Setup Supervisor and Nginx configuration for production
+  command: bench setup production {{ non_root_user }}
+  args:
+    chdir: "{{ non_root_home }}/frappe-bench"

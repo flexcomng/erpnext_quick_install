@@ -72,7 +72,7 @@ export MARIADB_ROOT_PASSWORD="$sqlpasswrd" # Use the collected password here
 run_playbook() {
     # Execute the playbook
     echo "Running Ansible playbook..."
-    ansible-playbook playbooks/main.yml
+    ansible-playbook playbooks/main.yml -vvv
 }
 
 # Check if Ansible is installed and install if not

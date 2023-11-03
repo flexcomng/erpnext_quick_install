@@ -69,8 +69,7 @@
         owner: root
         group: root
         mode: '0644'
-      notify:
-        - restart mariadb
+      notify: restart mariadb
       become: yes
 
     - name: Create hidden secret file to indicate MariaDB is configured
@@ -82,3 +81,4 @@
         mode: '0600'
       become: yes
   when: not is_mariadb_configured | default(false)
+

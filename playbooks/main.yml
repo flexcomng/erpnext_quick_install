@@ -82,19 +82,19 @@
   tasks:
     - name: Set file permissions for the home directory
       file:
-        path: "{{ ansible_env.HOME }}"
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        path: "{{ non_root_home }}"
+        owner: "{{ non_root_user }}"
+        group: "{{ non_root_user }}"
         mode: '0755'
         recurse: yes
       become: yes
 
     - name: Create a new ERPNext site
-      command: bench new-site {{ site_name }} --admin-password {{ admin_password.user_input }} --mariadb-root-password "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" --install-app erpnext
+      shell: bench new-site {{ site_name }} --admin-password {{ admin_password }} --mariadb-root-password "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" --install-app erpnext
       args:
-        chdir: "{{ ansible_env.HOME }}/frappe-bench"
+        chdir: "{{ non_root_home }}/frappe-bench"
       environment:
-        PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.local/bin"
+        PATH: "{{ ansible_env.PATH }}:{{ non_root_home }}/.local/bin:{{ non_root_home }}/frappe-bench"
 
     - name: Ask if the user wants to continue with production install
       pause:
