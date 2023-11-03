@@ -23,35 +23,48 @@
 
 - name: Secure MariaDB installation
   block:
-    - name: Use MariaDB root password from environment variable
+    - name: Set the root password for MariaDB
       mysql_user:
         name: root
         host_all: yes
         password: "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}"
         check_implicit_admin: yes
-        login_user: root
-        login_password: ""
+      become: yes
 
     - name: Remove anonymous MariaDB users
       mysql_user:
         user: ""
         host_all: yes
         state: absent
-        login_user: root
-        login_password: "{{ mariadb_root_password }}"
+      become: yes
+
+    - name: Disallow root login remotely
+      mysql_user:
+        name: root
+        host: '%'
+        state: absent
+      become: yes
 
     - name: Remove the MariaDB test database
       mysql_db:
         name: test
         state: absent
-        login_user: root
-        login_password: "{{ mariadb_root_password }}"
+      become: yes
+
+    - name: Flush privileges
+      mysql_user:
+        name: root
+        host_all: yes
+        password: "{{ mariadb_root_password }}"
+        priv: "*.*:RELOAD"
+      become: yes
 
     - name: Ensure the MariaDB server is started
       service:
         name: mariadb
         state: started
         enabled: yes
+      become: yes
 
     - name: Copy my.cnf configuration file
       template:
