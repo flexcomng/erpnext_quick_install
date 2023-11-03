@@ -1,31 +1,38 @@
 #!/bin/bash
 
-# Check if Ansible is installed
-if ! command -v ansible-playbook >/dev/null; then
-    echo "Ansible is not installed. Installing Ansible..."
+# Function to check and install Ansible
+install_ansible() {
+    if ! command -v ansible-playbook >/dev/null; then
+        echo "Ansible is not installed. Installing Ansible..."
 
-    # Update package lists
-    sudo apt update
+        # Update package lists
+        sudo apt update
 
-    # Install software-properties-common if not already installed
-    sudo apt install -y software-properties-common
+        # Install software-properties-common if not already installed
+        sudo apt install -y software-properties-common
 
-    # Add Ansible PPA (Personal Package Archive) and install Ansible
-    sudo apt-add-repository --yes --update ppa:ansible/ansible
-    sudo apt install -y ansible
+        # Add Ansible PPA (Personal Package Archive) and install Ansible
+        sudo apt-add-repository --yes --update ppa:ansible/ansible
+        sudo apt install -y ansible
 
-    echo "Ansible installation complete."
-else
-    echo "Ansible is already installed."
-fi
+        echo "Ansible installation complete."
+    else
+        echo "Ansible is already installed."
+    fi
+}
 
-# Check if Ansible installation is successful
-if command -v ansible-playbook >/dev/null; then
+# Function to run the Ansible playbook
+run_playbook() {
+    # Navigate to the playbook directory
+    cd erpnext_quick_install/playbooks/ || exit
+
     # Execute the playbook
     echo "Running Ansible playbook..."
     ansible-playbook main.yml
-else
-    echo "Failed to install Ansible. Cannot proceed with running the playbook."
-    exit 1
-fi
+}
 
+# Check if Ansible is installed and install if not
+install_ansible
+
+# Run the playbook
+run_playbook
