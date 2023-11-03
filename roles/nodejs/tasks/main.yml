@@ -1,29 +1,37 @@
 - name: Install NVM (Node Version Manager)
+  become: yes
+  become_user: "{{ non_root_user }}"
   shell: |
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
   args:
-    creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    creates: "{{ non_root_home }}/.nvm/nvm.sh"
 
-- name: Add NVM environment variables to .profile
+
+- name: Add NVM environment variables to non-root user's .profile
+  become: yes
+  become_user: "{{ non_root_user }}"
   lineinfile:
-    path: "{{ ansible_env.HOME }}/.profile"
+    path: "{{ non_root_home }}/.profile"
     line: "{{ item }}"
     create: yes
   loop:
-    - 'export NVM_DIR="$HOME/.nvm"'
-    - '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
-    - '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"'
+    - 'export NVM_DIR="{{ non_root_home }}/.nvm"'
+    - '[ -s "{{ non_root_home }}/.nvm/nvm.sh" ] && \. "{{ non_root_home }}/.nvm/nvm.sh"'
+    - '[ -s "{{ non_root_home }}/.nvm/bash_completion" ] && \. "{{ non_root_home }}/.nvm/bash_completion"'
 
 - name: Install Node.js version based on ERPNext requirements
+  become: yes
+  become_user: "{{ non_root_user }}"
   shell: |
-    . $HOME/.nvm/nvm.sh
+    . "{{ non_root_home }}/.nvm/nvm.sh"
     nvm install {{ node_version }}
   args:
     executable: /bin/bash
   environment:
-    NVM_DIR: "{{ ansible_env.HOME }}/.nvm"
+    NVM_DIR: "{{ non_root_home }}/.nvm"
   async: 600
   poll: 15
+
 
 
 - name: Install npm
