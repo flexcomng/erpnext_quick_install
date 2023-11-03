@@ -28,7 +28,8 @@
     mode: '0755'
     recurse: yes
 
-- name: Setup Supervisor and Nginx configuration for production
-  command: bench setup production {{ non_root_user }}
+- name: Final setup of Supervisor and Nginx configuration for production
+  shell: yes | bench setup production {{ non_root_user }}
   args:
     chdir: "{{ non_root_home }}/frappe-bench"
+  become: yes

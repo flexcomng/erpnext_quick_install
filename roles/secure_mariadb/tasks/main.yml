@@ -72,6 +72,10 @@
       notify: restart mariadb
       become: yes
 
+    - name: Restart MariaDB service
+      become: yes
+      shell: systemctl restart mariadb
+
     - name: Create hidden secret file to indicate MariaDB is configured
       file:
         path: "{{ ansible_env.HOME }}/.mariadb_configured"
