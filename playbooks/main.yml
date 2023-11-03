@@ -1,9 +1,22 @@
-- name: Preliminary Checks and Setup
-  hosts: localhost
+- hosts: localhost
   gather_facts: yes
   become: no 
 
-  tasks:
+  vars_prompt:
+    - name: "erpnext_version"
+      prompt: "Enter the ERPNext version to install (13, 14, or 15)"
+      private: no
+
+    - name: "site_name"
+      prompt: "Enter the site name (If you wish to install SSL later, please enter a FQDN)"
+      private: no
+
+    - name: "admin_password"
+      prompt: "Enter the Administrator password"
+      private: yes
+      confirm: yes
+
+  pre_tasks:
     - name: Determine non-root user
       command: whoami
       register: whoami
@@ -22,35 +35,19 @@
       set_fact:
         non_root_home: "{{ user_home.stdout }}"
 
-- name: Begin Main Setup
-  hosts: localhost
-  gather_facts: yes
-  become: yes
-
-  vars_prompt:
-    - name: "erpnext_version"
-      prompt: "Enter the ERPNext version to install (13, 14, or 15)"
-      private: no
-
-    - name: "site_name"
-      prompt: "Enter the site name (If you wish to install SSL later, please enter a FQDN)"
-      private: no
-
-    - name: "admin_password"
-      prompt: "Enter the Administrator password"
-      private: yes
-      confirm: yes
-
-  vars:
-    node_version: "{{ '18' if erpnext_version == '15' else '16' }}"
-    install_type: "development" 
-
-  pre_tasks:
     - name: Confirm the version choice with the user
       pause:
         prompt: "You have selected ERPNext version {{ erpnext_version }} for installation. Do you wish to continue? (yes/no)"
       register: continue_install
-      failed_when: continue_install.user_input | lower != 'yes'
+
+    - name: Terminate install process
+      debug:
+        msg: "Please run the playbook again and select the correct ERPNext version."
+      when: continue_install.user_input | lower not in ['yes', 'y']
+
+    - name: Close installer
+      meta: end_play
+      when: continue_install.user_input | lower not in ['yes', 'y']
 
     - name: Retrieve server IP address
       shell: hostname -I | awk '{print $1}'
