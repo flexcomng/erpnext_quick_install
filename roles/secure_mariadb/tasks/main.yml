@@ -23,41 +23,37 @@
 
 - name: Secure MariaDB installation
   block:
-    - name: Set the root password for MariaDB
-      mysql_user:
-        name: root
-        host_all: yes
-        password: "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}"
-        check_implicit_admin: yes
+    - name: Set the root password
+      shell: |
+        mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}'; FLUSH PRIVILEGES;"
       become: yes
+      no_log: true
+      when: not is_mariadb_configured | default(false)
 
-    - name: Remove anonymous MariaDB users
-      mysql_user:
-        user: ""
-        host_all: yes
-        state: absent
+    - name: Remove anonymous users
+      shell: |
+        mysql -u root -p"{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" -e "DELETE FROM mysql.user WHERE User='';"
       become: yes
+      no_log: true
 
     - name: Disallow root login remotely
-      mysql_user:
-        name: root
-        host: '%'
-        state: absent
+      shell: |
+        mysql -u root -p"{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
       become: yes
+      no_log: true
 
-    - name: Remove the MariaDB test database
-      mysql_db:
-        name: test
-        state: absent
+    - name: Remove test database and access to it
+      shell: |
+        mysql -u root -p"{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" -e "DROP DATABASE IF EXISTS test;"
+        mysql -u root -p"{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
       become: yes
+      no_log: true
 
-    - name: Flush privileges
-      mysql_user:
-        name: root
-        host_all: yes
-        password: "{{ mariadb_root_password }}"
-        priv: "*.*:RELOAD"
+    - name: Reload privilege tables
+      shell: |
+        mysql -u root -p"{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}" -e "FLUSH PRIVILEGES;"
       become: yes
+      no_log: true
 
     - name: Ensure the MariaDB server is started
       service:
@@ -75,6 +71,7 @@
         mode: '0644'
       notify:
         - restart mariadb
+      become: yes
 
     - name: Create hidden secret file to indicate MariaDB is configured
       file:
@@ -83,4 +80,5 @@
         owner: "{{ ansible_user_id }}"
         group: "{{ ansible_user_id }}"
         mode: '0600'
+      become: yes
   when: not is_mariadb_configured | default(false)
