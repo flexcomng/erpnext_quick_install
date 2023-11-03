@@ -14,13 +14,17 @@
     - '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
     - '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"'
 
-- name: Source .profile to load NVM
-  shell: ". {{ ansible_env.HOME }}/.profile"
-
 - name: Install Node.js version based on ERPNext requirements
-  shell: "nvm install {{ node_version }}"
+  shell: |
+    . $HOME/.nvm/nvm.sh
+    nvm install {{ node_version }}
+  args:
+    executable: /bin/bash
   environment:
     NVM_DIR: "{{ ansible_env.HOME }}/.nvm"
+  async: 600
+  poll: 15
+
 
 - name: Install npm
   apt:

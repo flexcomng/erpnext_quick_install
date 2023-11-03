@@ -53,8 +53,6 @@
       vars:
         mariadb_root_password: "{{ lookup('env', 'MARIADB_ROOT_PASSWORD') }}"
     - role: nodejs
-      vars:
-        node_version: "{{ node_version }}"
     - role: bench
 
   tasks:
