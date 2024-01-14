@@ -46,7 +46,7 @@ Debian 11 (Bulls Eye)
 Version 15 Compatibility is set to Ubuntu 22.04 LTS and above only. Other Distros or lower Ubuntu versions not supported for version 15 installation.
 Visit https://github.com/gavindsouza/awesome-frappe to learn about other apps you can install.
 
-If you encounter spawn error on socketio when running bench restart, run the following functions:
+If you encounter spawn error on socketio when running bench restart, run the following commands:
 
 ```
 bench setup socketio
