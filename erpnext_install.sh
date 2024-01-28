@@ -366,7 +366,13 @@ case "$continue_prod" in
     # Enable and resume the scheduler for the site
     bench --site $site_name scheduler enable && \
     bench --site $site_name scheduler resume && \
-
+    if [[ "$bench_version" == "version-15" ]]; then
+        bench setup socketio
+        bench setup supervisor
+        bench setup redis
+        sudo supervisorctl reload
+    fi
+    && \
     echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
     sleep 1
 
