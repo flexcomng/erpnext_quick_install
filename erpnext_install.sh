@@ -320,7 +320,7 @@ sudo pip3 install frappe-bench
 #Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
 echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init coop-bench --version $bench_version --verbose --install-app erpnext --version $bench_version
+bench init frappe-bench --version $bench_version --verbose --install-app erpnext --version $bench_version
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -334,7 +334,7 @@ sleep 2
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 # Change directory to frappe-bench
-cd coop-bench && \
+cd frappe-bench && \
 
 sudo chmod -R o+rx /home/$(echo $USER)
 
