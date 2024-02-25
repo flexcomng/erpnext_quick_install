@@ -438,7 +438,7 @@ case "$continue_prod" in
             bench config dns_multitenant on && \
             yes | bench setup nginx && \
             sudo service nginx reload && \
-            sudo bench setup lets-encrypt $site_name --non-interactive
+            sudo bench setup lets-encrypt $site_name --non-interactive --agree-tos --email $email_address 
             echo -e "${GREEN}SSL certificate installed successfully.${NC}"
             sleep 2
             ;;
