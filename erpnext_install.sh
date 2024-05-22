@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-# # Setting error handler
-# handle_error() {
-#     local line=$1
-#     local exit_code=$?
-#     echo "An error occurred on line $line with exit status $exit_code"
-#     exit $exit_code
-# }
+# Setting error handler
+handle_error() {
+    local line=$1
+    local exit_code=$?
+    echo "An error occurred on line $line with exit status $exit_code"
+    exit $exit_code
+}
 
-# trap 'handle_error $LINENO' ERR
-# set -e
+trap 'handle_error $LINENO' ERR
+set -e
 
 # Retrieve server IP
 server_ip=$(hostname -I | awk '{print $1}')
@@ -23,7 +23,7 @@ NC='\033[0m' # No Color
 
 # Checking Supported OS and distribution
 SUPPORTED_DISTRIBUTIONS=("Ubuntu" "Debian")
-SUPPORTED_VERSIONS=("22.04" "20.04" "11" "10" "9" "8")
+SUPPORTED_VERSIONS=("24.04" "23.04" "22.04" "20.04" "12" "11" "10" "9" "8")
 
 check_os() {
     local os_name=$(lsb_release -is)
@@ -53,7 +53,6 @@ check_os() {
 
 check_os
 
-
 # Detect the platform (similar to $OSTYPE)
 OS="`uname`"
 case $OS in
@@ -72,7 +71,6 @@ case $OS in
   *) ;;
 esac
 
-
 ask_twice() {
     local prompt="$1"
     local secret="$2"
@@ -80,15 +78,13 @@ ask_twice() {
 
     while true; do
         if [ "$secret" = "true" ]; then
-
             read -rsp "$prompt: " val1
-
             echo >&2
         else
             read -rp "$prompt: " val1
             echo >&2
         fi
-        
+
         if [ "$secret" = "true" ]; then
             read -rsp "Confirm password: " val2
             echo >&2
@@ -138,32 +134,48 @@ while [[ "$continue_install" != "yes" && "$continue_install" != "y" && "$continu
 done
 
 if [[ "$continue_install" == "no" || "$continue_install" == "n" ]]; then
-    # If user chooses 'no', loop back to version selection
-    continue
+    # If user chooses 'no', exit the script
+    echo -e "${RED}Installation aborted by user.${NC}"
+    exit 0
 else
     echo -e "${GREEN}Proceeding with the installation of $version_choice.${NC}"
-
 fi
 sleep 2
 
 # Check OS compatibility for Version 15
 if [[ "$bench_version" == "version-15" ]]; then
-    if [[ "$(lsb_release -si)" != "Ubuntu" ]]; then
+    if [[ "$(lsb_release -si)" != "Ubuntu" && "$(lsb_release -si)" != "Debian" ]]; then
         echo -e "${RED}Your Distro is not supported for Version 15.${NC}"
         exit 1
-    elif [[ "$(lsb_release -rs)" < "22.04" ]]; then
+    elif [[ "$(lsb_release -si)" == "Ubuntu" && "$(lsb_release -rs)" < "22.04" ]]; then
         echo -e "${RED}Your Ubuntu version is below the minimum version required to support Version 15.${NC}"
+        exit 1
+    elif [[ "$(lsb_release -si)" == "Debian" && "$(lsb_release -rs)" < "12" ]]; then
+        echo -e "${RED}Your Debian version is below the minimum version required to support Version 15.${NC}"
+        exit 1
+    fi
+fi
+if [[ "$bench_version" != "version-15" ]]; then
+    if [[ "$(lsb_release -si)" != "Ubuntu" && "$(lsb_release -si)" != "Debian" ]]; then
+        echo -e "${RED}Your Distro is not supported for Version 15.${NC}"
+        exit 1
+    elif [[ "$(lsb_release -si)" == "Ubuntu" && "$(lsb_release -rs)" > "22.04" ]]; then
+        echo -e "${RED}Your Ubuntu version is not supported for $version_choice.${NC}"
+        exit 1
+    elif [[ "$(lsb_release -si)" == "Debian" && "$(lsb_release -rs)" > "11" ]]; then
+        echo -e "${RED}Your Debian version is below the minimum version required to support Version 15.${NC}"
         exit 1
     fi
 fi
 
 # Check OS and version compatibility for all versions
 check_os
-#First Let's take you home
+
+# First Let's take you home
 cd $(sudo -u $USER echo $HOME)
 
-#Next let's set some important parameters.
-#We will need your required SQL root passwords
+# Next let's set some important parameters.
+# We will need your required SQL root passwords
 echo -e "${YELLOW}Now let's set some important parameters...${NC}"
 sleep 1
 echo -e "${YELLOW}We will need your required SQL root password${NC}"
@@ -171,10 +183,8 @@ sleep 1
 sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
 sleep 1
 echo -e "\n"
-check_os
 
-
-#Now let's make sure your instance has the most updated packages
+# Now let's make sure your instance has the most updated packages
 echo -e "${YELLOW}Updating system packages...${NC}"
 sleep 2
 sudo apt update
@@ -182,12 +192,12 @@ sudo apt upgrade -y
 echo -e "${GREEN}System packages updated.${NC}"
 sleep 2
 
-#Now let's install a couple of requirements: git, curl and pip
+# Now let's install a couple of requirements: git, curl and pip
 echo -e "${YELLOW}Installing preliminary package requirements${NC}"
 sleep 3
 sudo apt install software-properties-common git curl -y
 
-#Next we'll install the python environment manager...
+# Next we'll install the python environment manager...
 echo -e "${YELLOW}Installing python environment manager and other requirements...${NC}"
 sleep 2
 
@@ -221,12 +231,23 @@ fi
 echo -e "\n"
 echo -e "${YELLOW}Installing additional Python packages and Redis Server${NC}"
 sleep 2
-sudo apt install git python3-dev python3-setuptools python3-venv python3-pip python3-distutils redis-server -y && \
-wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb && \
-sudo dpkg -i wkhtmltox_0.12.6.1-2.jammy_amd64.deb && \
+sudo apt install git python3-dev python3-setuptools python3-venv python3-pip redis-server -y && \
+
+# Detect the architecture
+arch=$(uname -m)
+case $arch in
+    x86_64) arch="amd64" ;;
+    aarch64) arch="arm64" ;;
+    *) echo -e "${RED}Unsupported architecture: $arch${NC}"; exit 1 ;;
+esac
+
+sudo apt install fontconfig libxrender1 xfonts-75dpi xfonts-base -y
+# Download and install wkhtmltox for the detected architecture
+wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_$arch.deb && \
+sudo dpkg -i wkhtmltox_0.12.6.1-2.jammy_$arch.deb || true && \
 sudo cp /usr/local/bin/wkhtmlto* /usr/bin/ && \
-sudo chmod a+x /usr/bin/wk*
-sudo rm wk* && \
+sudo chmod a+x /usr/bin/wk* && \
+sudo rm wkhtmltox_0.12.6.1-2.jammy_$arch.deb && \
 sudo apt --fix-broken install -y && \
 sudo apt install fontconfig xvfb libfontconfig xfonts-base xfonts-75dpi libxrender1 -y && \
 
@@ -240,12 +261,11 @@ sudo apt install mariadb-server mariadb-client -y
 echo -e "${GREEN}MariaDB and other packages have been installed successfully.${NC}"
 sleep 2
 
-
 # Use a hidden marker file to determine if this section of the script has run before.
 MARKER_FILE=~/.mysql_configured.marker
 
 if [ ! -f "$MARKER_FILE" ]; then
-    #Now we'll go through the required settings of the mysql_secure_installation...
+    # Now we'll go through the required settings of the mysql_secure_installation...
     echo -e ${YELLOW}"Now we'll go ahead to apply MariaDB security settings...${NC}"
     sleep 2
 
@@ -277,8 +297,7 @@ EOF'
     sleep 1
 fi
 
-
-#Install NVM, Node, npm and yarn
+# Install NVM, Node, npm and yarn
 echo -e ${YELLOW}"Now to install NVM, Node, npm and yarn${NC}"
 sleep 2
 curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
@@ -312,15 +331,24 @@ if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_
     nvm use $node_version
 fi
 
-#Install bench
+# Install bench
 echo -e "${YELLOW}Now let's install bench${NC}"
 sleep 2
+
+# Check if EXTERNALLY-MANAGED file exists and remove it
+externally_managed_file=$(find /usr/lib/python3.*/EXTERNALLY-MANAGED 2>/dev/null || true)
+if [[ -n "$externally_managed_file" ]]; then
+    sudo rm "$externally_managed_file" || true
+fi
+
+
+sudo apt install python3-pip -y
 sudo pip3 install frappe-bench
 
-#Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
-echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}" 
+# Initiate bench in frappe-bench folder, but get a supervisor can't restart bench error...
+echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}"
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init frappe-bench --version $bench_version --verbose --install-app erpnext --version $bench_version
+bench init v14-bench --version $bench_version --verbose
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -334,11 +362,30 @@ sleep 2
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 # Change directory to frappe-bench
-cd frappe-bench && \
+cd v14-bench && \
 
 sudo chmod -R o+rx /home/$(echo $USER)
 
-bench new-site $site_name --db-root-password $sqlpasswrd --admin-password $adminpasswrd --install-app erpnext
+bench new-site $site_name --db-root-password $sqlpasswrd --admin-password $adminpasswrd
+
+# Prompt user to confirm if they want to install ERPNext
+
+echo -e "${LIGHT_BLUE}Would you like to install ERPNext? (yes/no)${NC}"
+read -p "Response: " erpnext_install
+erpnext_install=$(echo "$erpnext_install" | tr '[:upper:]' '[:lower:]')
+case "$erpnext_install" in
+    "yes" | "y")
+    sleep 2
+    # Setup supervisor and nginx config
+    bench get-app erpnext --branch $bench_version && \
+    bench --site $site_name install-app erpnext
+    sleep 1
+esac
+
+# Dynamically set the Python version for the playbook file path
+python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+playbook_file="/usr/local/lib/python${python_version}/dist-packages/bench/playbooks/roles/mariadb/tasks/main.yml"
+sudo sed -i 's/- include: /- include_tasks: /g' $playbook_file
 
 echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
 read -p "Response: " continue_prod
@@ -392,7 +439,7 @@ case "$continue_prod" in
     sleep 1
 
 
-    #Now to make sure the environment is fully setup
+    # Now to make sure the environment is fully setup
     sudo chmod 755 /home/$(echo $USER)
     sleep 3
     printf "${GREEN}Production setup complete! "
@@ -400,10 +447,21 @@ case "$continue_prod" in
     printf "${NC}\n"
     sleep 3
 
+    echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
+    read -p "Response: " hrms_install
+    hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
+    case "$hrms_install" in
+        "yes" | "y")
+        sleep 2
+        # Setup supervisor and nginx config
+        bench get-app hrms --branch $bench_version && \
+        bench --site $site_name install-app hrms
+        sleep 1
+    esac
+
     echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
 
     read -p "Response: " continue_ssl
-
     continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
 
     case "$continue_ssl" in
@@ -424,8 +482,7 @@ case "$continue_prod" in
                 echo -e "${GREEN}Package fixed${NC}"
                 sleep 2
             fi
-            # Install Certbot Clasic
-            # sudo apt install certbot python3-certbot-nginx -y
+            # Install Certbot Classic
             sudo apt install snapd -y && \
             sudo snap install core && \
             sudo snap refresh core && \
@@ -445,7 +502,7 @@ case "$continue_prod" in
             ;;
     esac
 
-    # Now let's reactivate virtual environment
+    # Now let's deactivate virtual environment
     if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
         deactivate
     fi
@@ -469,14 +526,13 @@ case "$continue_prod" in
     else
         nvm alias default 16
     fi
-    nvm alias default 16
     bench use $site_name
     bench build
     echo -e "${GREEN}Done!"
     sleep 5
 
     echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
-    echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Enviromment."
+    echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Environment."
     echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
     echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
     echo -e "Enjoy development with Frappe!"
