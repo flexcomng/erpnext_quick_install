@@ -338,7 +338,7 @@ sleep 2
 # Check if EXTERNALLY-MANAGED file exists and remove it
 externally_managed_file=$(find /usr/lib/python3.*/EXTERNALLY-MANAGED 2>/dev/null || true)
 if [[ -n "$externally_managed_file" ]]; then
-    sudo rm "$externally_managed_file" || true
+    sudo python3 -m pip config --global set global.break-system-packages true
 fi
 
 
