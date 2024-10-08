@@ -454,7 +454,7 @@ case "$continue_prod" in
         "yes" | "y")
         sleep 2
         # Setup supervisor and nginx config
-        bench get-app helpdesk --branch $bench_version && \
+        bench get-app helpdesk  && \
         bench --site $site_name install-app helpdesk
         sleep 1
     esac
@@ -466,7 +466,7 @@ case "$continue_prod" in
         "yes" | "y")
         sleep 2
         # Setup supervisor and nginx config
-        bench get-app crm --branch $bench_version && \
+        bench get-app crm  && \
         bench --site $site_name install-app crm
         sleep 1
     esac
@@ -478,7 +478,7 @@ case "$continue_prod" in
         "yes" | "y")
         sleep 2
         # Setup supervisor and nginx config
-        bench get-app insights --branch $bench_version && \
+        bench get-app insights  && \
         bench --site $site_name install-app insights
         sleep 1
     esac
