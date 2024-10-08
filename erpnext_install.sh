@@ -471,18 +471,6 @@ case "$continue_prod" in
         sleep 1
     esac
 
-    echo -e "${LIGHT_BLUE}Would you like to install INSIGHTS? (yes/no)${NC}"
-    read -p "Response: " insights_install
-    insights _install=$(echo "$insights_install" | tr '[:upper:]' '[:lower:]')
-    case "$insights_install" in
-        "yes" | "y")
-        sleep 2
-        # Setup supervisor and nginx config
-        bench get-app insights  && \
-        bench --site $site_name install-app insights
-        sleep 1
-    esac
-
     echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
     read -p "Response: " hrms_install
     hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
