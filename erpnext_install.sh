@@ -447,6 +447,42 @@ case "$continue_prod" in
     printf "${NC}\n"
     sleep 3
 
+    echo -e "${LIGHT_BLUE}Would you like to install HELPDESK? (yes/no)${NC}"
+    read -p "Response: " helpdesk_install
+    helpdesk_install=$(echo "$helpdesk_install" | tr '[:upper:]' '[:lower:]')
+    case "$helpdesk_install" in
+        "yes" | "y")
+        sleep 2
+        # Setup supervisor and nginx config
+        bench get-app helpdesk --branch $bench_version && \
+        bench --site $site_name install-app helpdesk
+        sleep 1
+    esac
+
+    echo -e "${LIGHT_BLUE}Would you like to install CRM? (yes/no)${NC}"
+    read -p "Response: " crm_install
+    crm_install=$(echo "$crm_install" | tr '[:upper:]' '[:lower:]')
+    case "$crm_install" in
+        "yes" | "y")
+        sleep 2
+        # Setup supervisor and nginx config
+        bench get-app crm --branch $bench_version && \
+        bench --site $site_name install-app crm
+        sleep 1
+    esac
+
+    echo -e "${LIGHT_BLUE}Would you like to install INSIGHTS? (yes/no)${NC}"
+    read -p "Response: " insights_install
+    insights _install=$(echo "$insights_install" | tr '[:upper:]' '[:lower:]')
+    case "$insights_install" in
+        "yes" | "y")
+        sleep 2
+        # Setup supervisor and nginx config
+        bench get-app insights --branch $bench_version && \
+        bench --site $site_name install-app insights
+        sleep 1
+    esac
+
     echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
     read -p "Response: " hrms_install
     hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
