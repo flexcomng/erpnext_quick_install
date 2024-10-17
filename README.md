@@ -21,12 +21,6 @@ Do not run this script as root as it will fail when setting up the site. If your
 1. Create a new user (you can change frappeuser to your preferred user name):
 ```
 sudo adduser frappeuser
-Full Name []: frappeuser
-Room Number []:
-Work Phone []:
-Home Phone []:
-Other []:
-Is the information correct? [Y]
 ```
 2. Add the user to sudoers:
 ```
@@ -46,7 +40,7 @@ cd /home/frappeuser
 
 1. Clone the Repo:
 ```
-git clone https://github.com/flexcomng/erpnext_quick_install.git
+git clone https://github.com/AlastairDare/terp_quickinstall.git
 ```
 2. navigate to the folder:
 ```
