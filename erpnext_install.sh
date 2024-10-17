@@ -15,7 +15,7 @@ install_hrms() {
 
 uninstall_remove_hrms() {
     bench --site $site_name uninstall-app hrms
-    bench --site $site_name remove-app hrms
+    bench remove-app hrms
 }
 
 install_whitelabel_terp() {
