@@ -8,6 +8,16 @@ handle_error() {
     exit $exit_code
 }
 
+install_hrms() {
+    bench get-app hrms --branch version-15 && \
+    bench --site $site_name install-app hrms --branch version-15
+}
+
+uninstall_remove_hrms() {
+    bench --site $site_name uninstall-app hrms
+    bench --site $site_name remove-app hrms
+}
+
 trap 'handle_error $LINENO' ERR
 set -e
 
@@ -103,69 +113,27 @@ ask_twice() {
         fi
     done
 }
-echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
+echo -e "${LIGHT_BLUE}Welcome to the T-ERP ERPNext Installer...${NC}"
 echo -e "\n"
 sleep 3
 
-# Prompt user for version selection with a preliminary message
-echo -e "${YELLOW}Please enter the number of the corresponding ERPNext version you wish to install:${NC}"
+# Set the bench version directly to version 15
+bench_version="version-15"
+version_choice="Version 15"
 
-versions=("Version 13" "Version 14" "Version 15")
-select version_choice in "${versions[@]}"; do
-    case $REPLY in
-        1) bench_version="version-13"; break;;
-        2) bench_version="version-14"; break;;
-        3) bench_version="version-15"; break;;
-        *) echo -e "${RED}Invalid option. Please select a valid version.${NC}";;
-    esac
-done
+# Proceed with the installation without user confirmation
+echo -e "${GREEN}$version_choice is selected for installation by default.${NC}"
+echo -e "${GREEN}Proceeding with installation of $version_choice...${NC}"
 
-# Confirm the version choice with the user
-echo -e "${GREEN}You have selected $version_choice for installation.${NC}"
-echo -e "${LIGHT_BLUE}Do you wish to continue? (yes/no)${NC}"
-read -p "Response: " continue_install
-continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
-
-while [[ "$continue_install" != "yes" && "$continue_install" != "y" && "$continue_install" != "no" && "$continue_install" != "n" ]]; do
-    echo -e "${RED}Invalid response. Please answer with 'yes' or 'no'.${NC}"
-    echo -e "${LIGHT_BLUE}Do you wish to continue with the installation of $version_choice? (yes/no)${NC}"
-    read -p "Response: " continue_install
-    continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
-done
-
-if [[ "$continue_install" == "no" || "$continue_install" == "n" ]]; then
-    # If user chooses 'no', exit the script
-    echo -e "${RED}Installation aborted by user.${NC}"
-    exit 0
-else
-    echo -e "${GREEN}Proceeding with the installation of $version_choice.${NC}"
-fi
+# Small pause for readability
 sleep 2
 
-# Check OS compatibility for Version 15
-if [[ "$bench_version" == "version-15" ]]; then
-    if [[ "$(lsb_release -si)" != "Ubuntu" && "$(lsb_release -si)" != "Debian" ]]; then
-        echo -e "${RED}Your Distro is not supported for Version 15.${NC}"
-        exit 1
-    elif [[ "$(lsb_release -si)" == "Ubuntu" && "$(lsb_release -rs)" < "22.04" ]]; then
-        echo -e "${RED}Your Ubuntu version is below the minimum version required to support Version 15.${NC}"
-        exit 1
-    elif [[ "$(lsb_release -si)" == "Debian" && "$(lsb_release -rs)" < "12" ]]; then
-        echo -e "${RED}Your Debian version is below the minimum version required to support Version 15.${NC}"
-        exit 1
-    fi
-fi
-if [[ "$bench_version" != "version-15" ]]; then
-    if [[ "$(lsb_release -si)" != "Ubuntu" && "$(lsb_release -si)" != "Debian" ]]; then
-        echo -e "${RED}Your Distro is not supported for Version 15.${NC}"
-        exit 1
-    elif [[ "$(lsb_release -si)" == "Ubuntu" && "$(lsb_release -rs)" > "22.04" ]]; then
-        echo -e "${RED}Your Ubuntu version is not supported for $version_choice.${NC}"
-        exit 1
-    elif [[ "$(lsb_release -si)" == "Debian" && "$(lsb_release -rs)" > "11" ]]; then
-        echo -e "${RED}Your Debian version is below the minimum version required to support Version 15.${NC}"
-        exit 1
-    fi
+# Simplified check for Ubuntu 24.04 and Version 15
+if [[ "$(lsb_release -si)" == "Ubuntu" && "$(lsb_release -rs)" == "24.04" ]]; then
+    echo -e "${GREEN}Ubuntu 24.04 detected. Proceeding with Version 15 installation.${NC}"
+else
+    echo -e "${RED}This script is intended for Ubuntu 24.04 only. Exiting.${NC}"
+    exit 1
 fi
 
 # Check OS and version compatibility for all versions
@@ -310,14 +278,10 @@ echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This
 # Source .profile to load the new environment variables in the current session
 source ~/.profile
 
-# Conditional Node.js installation based on the version of ERPNext selected
-if [[ "$bench_version" == "version-15" ]]; then
-    nvm install 18
-    node_version="18"
-else
-    nvm install 16
-    node_version="16"
-fi
+# Installing node/nvm for Version-15 with no choice or option for another version
+nvm install 18
+node_version="18"
+
 
 sudo apt-get -qq install npm -y
 sudo npm install -g yarn
@@ -354,8 +318,13 @@ sleep 1
 
 # Prompt user for site name
 echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
-read -p "Enter the site name (If you wish to install SSL later, please enter a FQDN): " site_name
+echo -e "${LIGHT_BLUE}Enter the site name. '.t-erp.co.za' will be automatically appended to your input.${NC}"
+read -p "Site name: " user_input
+site_name="${user_input}.t-erp.co.za"
+echo -e "${GREEN}Your full site name is: $site_name${NC}"
 sleep 1
+
+# Prompt for admin password
 adminpasswrd=$(ask_twice "Enter the Administrator password" "true")
 echo -e "\n"
 sleep 2
@@ -370,172 +339,174 @@ bench new-site $site_name --db-root-password $sqlpasswrd --admin-password $admin
 
 # Prompt user to confirm if they want to install ERPNext
 
-echo -e "${LIGHT_BLUE}Would you like to install ERPNext? (yes/no)${NC}"
-read -p "Response: " erpnext_install
-erpnext_install=$(echo "$erpnext_install" | tr '[:upper:]' '[:lower:]')
-case "$erpnext_install" in
-    "yes" | "y")
-    sleep 2
-    # Setup supervisor and nginx config
-    bench get-app erpnext --branch $bench_version && \
-    bench --site $site_name install-app erpnext
-    sleep 1
-esac
+# Notify the user about ERPNext installation
+echo -e "${GREEN}Proceeding with ERPNext installation...${NC}"
+sleep 2
+
+# Setup supervisor and nginx config
+echo -e "${YELLOW}Setting up ERPNext...${NC}"
+bench get-app erpnext --branch $bench_version && \
+bench --site $site_name install-app erpnext
+
+# Check if the installation was successful
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}ERPNext has been successfully installed.${NC}"
+else
+    echo -e "${RED}An error occurred during ERPNext installation. Please check the logs for more information.${NC}"
+fi
+sleep 1
 
 # Dynamically set the Python version for the playbook file path
 python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 playbook_file="/usr/local/lib/python${python_version}/dist-packages/bench/playbooks/roles/mariadb/tasks/main.yml"
 sudo sed -i 's/- include: /- include_tasks: /g' $playbook_file
 
-echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
-read -p "Response: " continue_prod
-continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')
-case "$continue_prod" in
-    "yes" | "y")
+# Production setup
+echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
+sleep 2
+# Setup supervisor and nginx config
+yes | sudo bench setup production $USER && \
+echo -e "${YELLOW}Applying necessary permissions to supervisor...${NC}"
+sleep 1
+# Change ownership of supervisord.conf
+# Path to the supervisord.conf file
+FILE="/etc/supervisor/supervisord.conf"
+# Construct the search pattern with the current $USER environment variable
+SEARCH_PATTERN="chown=$USER:$USER"
 
-    echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
+# Check if the pattern exists in the file
+if grep -q "$SEARCH_PATTERN" "$FILE"; then
+    echo -e "${YELLOW}User ownership already exists for supervisord. Updating it...${NC}"
+    # Replace the existing line with the new user ownership line
+    sudo sed -i "/chown=.*/c $SEARCH_PATTERN" "$FILE"
+else
+    echo -e "${YELLOW}User ownership does not exist for supervisor. Adding it...${NC}"
+    # Insert the new user ownership line at a specific line number
+    sudo sed -i "5a $SEARCH_PATTERN" "$FILE"
+fi
+
+# Restart supervisor
+sudo service supervisor restart && \
+
+# Setup production again to reflect the new site
+yes | sudo bench setup production $USER && \
+
+echo -e "${YELLOW}Enabling Scheduler...${NC}"
+sleep 1
+# Enable and resume the scheduler for the site
+bench --site $site_name scheduler enable && \
+bench --site $site_name scheduler resume && \
+if [[ "$bench_version" == "version-15" ]]; then
+    echo -e "${YELLOW}Setting up Socketio, Redis and Supervisor...${NC}"
+    sleep 1
+    bench setup socketio
+    yes | bench setup supervisor
+    bench setup redis
+    sudo supervisorctl reload
+fi
+echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
+sleep 1
+
+
+# Now to make sure the environment is fully setup
+sudo chmod 755 /home/$(echo $USER)
+sleep 3
+printf "${GREEN}Production setup complete! "
+printf '\xF0\x9F\x8E\x86'
+printf "${NC}\n"
+sleep 3
+
+# HRMS installation logic
+echo -e "${LIGHT_BLUE}Proceeding with HRMS installation...${NC}"
+sleep 2
+# First installation attempt
+if ! install_hrms; then
+    echo -e "${YELLOW}HRMS installation failed. A single failure is not unexpected. Attempting first re-install attempt${NC}"
+    uninstall_remove_hrms
+    
+    # Second installation attempt
+    if ! install_hrms; then
+        echo -e "${YELLOW}HRMS installation failed again. Attempting second and final re-install attempt${NC}"
+        uninstall_remove_hrms
+        
+        # Third and final installation attempt
+        if ! install_hrms; then
+            echo -e "${YELLOW}Both attempts to re-install have failed. Removing files so that you may attempt your own installation later.${NC}"
+            uninstall_remove_hrms
+        fi
+    fi
+fi
+
+echo -e "${YELLOW}Proceeding with SSL installation...${NC}"
+echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable.${NC}"
+sleep 3
+
+# Set E-mail value for SSL
+email_address = "tech@t-erp.co.za"
+
+# Install Certbot
+echo -e "${YELLOW}Installing Certbot...${NC}"
+sleep 1
+if [ "$DISTRO" == "Debian" ]; then
+    echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
+    sleep 4
+    sudo pip3 uninstall cryptography -y
+    yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
+    echo -e "${GREEN}Package fixed${NC}"
     sleep 2
-    # Setup supervisor and nginx config
-    yes | sudo bench setup production $USER && \
-    echo -e "${YELLOW}Applying necessary permissions to supervisor...${NC}"
-    sleep 1
-    # Change ownership of supervisord.conf
-    # Path to the supervisord.conf file
-    FILE="/etc/supervisor/supervisord.conf"
-    # Construct the search pattern with the current $USER environment variable
-    SEARCH_PATTERN="chown=$USER:$USER"
+fi
 
-    # Check if the pattern exists in the file
-    if grep -q "$SEARCH_PATTERN" "$FILE"; then
-        echo -e "${YELLOW}User ownership already exists for supervisord. Updating it...${NC}"
-        # Replace the existing line with the new user ownership line
-        sudo sed -i "/chown=.*/c $SEARCH_PATTERN" "$FILE"
-    else
-        echo -e "${YELLOW}User ownership does not exist for supervisor. Adding it...${NC}"
-        # Insert the new user ownership line at a specific line number
-        sudo sed -i "5a $SEARCH_PATTERN" "$FILE"
-    fi
+# Install Certbot Classic
+sudo apt install snapd -y && \
+sudo snap install core && \
+sudo snap refresh core && \
+sudo snap install --classic certbot && \
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-    # Restart supervisor
-    sudo service supervisor restart && \
+# Obtain and Install the certificate
+echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
+sleep 2
+if sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name; then
+    echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+else
+    echo -e "${RED}SSL certificate installation failed. Please check your domain configuration and try again manually.${NC}"
+fi
+sleep 2
 
-    # Setup production again to reflect the new site
-    yes | sudo bench setup production $USER && \
+# Now let's deactivate virtual environment
+if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
+    deactivate
+fi
 
-    echo -e "${YELLOW}Enabling Scheduler...${NC}"
-    sleep 1
-    # Enable and resume the scheduler for the site
-    bench --site $site_name scheduler enable && \
-    bench --site $site_name scheduler resume && \
-    if [[ "$bench_version" == "version-15" ]]; then
-        echo -e "${YELLOW}Setting up Socketio, Redis and Supervisor...${NC}"
-        sleep 1
-        bench setup socketio
-        yes | bench setup supervisor
-        bench setup redis
-        sudo supervisorctl reload
-    fi
-    echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
-    sleep 1
-
-
-    # Now to make sure the environment is fully setup
-    sudo chmod 755 /home/$(echo $USER)
-    sleep 3
-    printf "${GREEN}Production setup complete! "
-    printf '\xF0\x9F\x8E\x86'
-    printf "${NC}\n"
-    sleep 3
-
-    echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
-    read -p "Response: " hrms_install
-    hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
-    case "$hrms_install" in
-        "yes" | "y")
-        sleep 2
-        # Setup supervisor and nginx config
-        bench get-app hrms --branch $bench_version && \
-        bench --site $site_name install-app hrms
-        sleep 1
-    esac
-
-    echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
-
-    read -p "Response: " continue_ssl
-    continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
-
-    case "$continue_ssl" in
-        "yes" | "y")
-            echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable before your proceed.${NC}"
-            sleep 3
-            # Prompt user for email
-            read -p "Enter your email address: " email_address
-
-            # Install Certbot
-            echo -e "${YELLOW}Installing Certbot...${NC}"
-            sleep 1
-            if [ "$DISTRO" == "Debian" ]; then
-                echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
-                sleep 4
-                sudo pip3 uninstall cryptography -y
-                yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
-                echo -e "${GREEN}Package fixed${NC}"
-                sleep 2
-            fi
-            # Install Certbot Classic
-            sudo apt install snapd -y && \
-            sudo snap install core && \
-            sudo snap refresh core && \
-            sudo snap install --classic certbot && \
-            sudo ln -s /snap/bin/certbot /usr/bin/certbot
-            
-            # Obtain and Install the certificate
-            echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
-            sleep 2
-            sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name
-            echo -e "${GREEN}SSL certificate installed successfully.${NC}"
-            sleep 2
-            ;;
-        *)
-            echo -e "${RED}Skipping SSL installation...${NC}"
-            sleep 3
-            ;;
-    esac
-
-    # Now let's deactivate virtual environment
-    if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
-        deactivate
-    fi
-
-    echo -e "${GREEN}--------------------------------------------------------------------------------"
-    echo -e "Congratulations! You have successfully installed ERPNext $version_choice."
-    echo -e "You can start using your new ERPNext installation by visiting https://$site_name"
-    echo -e "(if you have enabled SSL and used a Fully Qualified Domain Name"
-    echo -e "during installation) or http://$server_ip to begin."
-    echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
-    echo -e "Enjoy using ERPNext!"
-    echo -e "--------------------------------------------------------------------------------${NC}"
-        ;;
-    *)
-
-    echo -e "${YELLOW}Getting your site ready for development...${NC}"
-    sleep 2
-    source ~/.profile
-    if [[ "$bench_version" == "version-15" ]]; then
-        nvm alias default 18
-    else
-        nvm alias default 16
-    fi
-    bench use $site_name
-    bench build
-    echo -e "${GREEN}Done!"
-    sleep 5
-
-    echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
-    echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Environment."
-    echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
-    echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
-    echo -e "Enjoy development with Frappe!"
-    echo -e "-----------------------------------------------------------------------------------------------${NC}"
+echo -e "${GREEN}--------------------------------------------------------------------------------"
+echo -e "Congratulations! You have successfully installed ERPNext $version_choice."
+echo -e "You can start using your new ERPNext installation by visiting https://$site_name"
+echo -e "(if you have enabled SSL and used a Fully Qualified Domain Name"
+echo -e "during installation) or http://$server_ip to begin."
+echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
+echo -e "Enjoy using ERPNext!"
+echo -e "--------------------------------------------------------------------------------${NC}"
     ;;
-esac
+*)
+
+echo -e "${YELLOW}Getting your site ready for development...${NC}"
+sleep 2
+source ~/.profile
+if [[ "$bench_version" == "version-15" ]]; then
+    nvm alias default 18
+else
+    nvm alias default 16
+fi
+bench use $site_name
+bench build
+echo -e "${GREEN}Done!"
+sleep 5
+
+echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
+echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Environment."
+echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
+echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
+echo -e "Enjoy development with Frappe!"
+echo -e "-----------------------------------------------------------------------------------------------${NC}"
+;;
+
