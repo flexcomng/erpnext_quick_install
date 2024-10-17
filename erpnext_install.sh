@@ -18,6 +18,11 @@ uninstall_remove_hrms() {
     bench --site $site_name remove-app hrms
 }
 
+install_whitelabel_terp() {
+    bench get-app https://github.com/AlastairDare/whitelabel-terp --branch terp && \
+    bench --site $site_name install-app whitelabel --branch terp
+}
+
 trap 'handle_error $LINENO' ERR
 set -e
 
@@ -436,6 +441,18 @@ if ! install_hrms; then
         fi
     fi
 fi
+
+# Whitelabel-Terp Installation logic
+echo -e "${LIGHT_BLUE}Proceeding with T-ERP Whitelabel installation...${NC}"
+sleep 2
+
+if ! install_whitelabel_terp; then 
+    echo -e "${YELLOW}T-ERP Whitelabel installation failed.${NC}"
+else
+    echo -e "${GREEN}T-ERP Whitelabel installation succeeded.${NC}"
+fi
+sleep 2
+
 
 echo -e "${YELLOW}Proceeding with SSL installation...${NC}"
 echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable.${NC}"
