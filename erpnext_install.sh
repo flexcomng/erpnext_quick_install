@@ -459,7 +459,7 @@ echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instan
 sleep 3
 
 # Set E-mail value for SSL
-email_address = "tech@t-erp.co.za"
+email_address="tech@t-erp.co.za"
 
 # Install Certbot
 echo -e "${YELLOW}Installing Certbot...${NC}"
