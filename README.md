@@ -44,7 +44,7 @@ git clone https://github.com/AlastairDare/terp_quickinstall.git
 ```
 2. navigate to the folder:
 ```
-cd erpnext_quick_install
+cd terp_quickinstall
 ```
 3. Make the script executable
 ```
