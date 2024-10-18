@@ -503,8 +503,8 @@ echo -e "during installation) or http://$server_ip to begin."
 echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
 echo -e "Enjoy using ERPNext!"
 echo -e "--------------------------------------------------------------------------------${NC}"
-    ;;
-*)
+
+
 
 echo -e "${YELLOW}Getting your site ready for development...${NC}"
 sleep 2
@@ -525,5 +525,5 @@ echo -e "Start your instance by running bench start to start your server and vis
 echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
 echo -e "Enjoy development with Frappe!"
 echo -e "-----------------------------------------------------------------------------------------------${NC}"
-;;
+
 
