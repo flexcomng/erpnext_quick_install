@@ -504,8 +504,6 @@ echo -e "Install additional apps as required. Visit https://docs.erpnext.com for
 echo -e "Enjoy using ERPNext!"
 echo -e "--------------------------------------------------------------------------------${NC}"
 
-
-
 echo -e "${YELLOW}Getting your site ready for development...${NC}"
 sleep 2
 source ~/.profile
@@ -526,4 +524,7 @@ echo -e "Install additional apps as required. Visit https://frappeframework.com 
 echo -e "Enjoy development with Frappe!"
 echo -e "-----------------------------------------------------------------------------------------------${NC}"
 
+bench --site $site_name migrate
+bench restart
+benhc --site $site_name clear-cache
 
