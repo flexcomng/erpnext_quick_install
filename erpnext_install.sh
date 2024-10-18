@@ -10,7 +10,7 @@ handle_error() {
 
 install_hrms() {
     bench get-app hrms --branch version-15 && \
-    bench --site $site_name install-app hrms --branch version-15
+    bench --site $site_name install-app hrms
 }
 
 uninstall_remove_hrms() {
@@ -20,7 +20,7 @@ uninstall_remove_hrms() {
 
 install_whitelabel_terp() {
     bench get-app https://github.com/AlastairDare/whitelabel-terp --branch terp && \
-    bench --site $site_name install-app whitelabel --branch terp
+    bench --site $site_name install-app whitelabel
 }
 
 trap 'handle_error $LINENO' ERR
