@@ -44,19 +44,23 @@ cd /home/frappeuser
 
 # Installation:
 
-1. Clone the Repo:
+1. Install git:
+```
+sudo apt install git
+```
+2. Clone the Repo:
 ```
 git clone https://github.com/flexcomng/erpnext_quick_install.git
 ```
-2. navigate to the folder:
+3. navigate to the folder:
 ```
 cd erpnext_quick_install
 ```
-3. Make the script executable
+4. Make the script executable
 ```
 chmod +x erpnext_install.sh
 ```
-4. Run the script:
+5. Run the script:
 ```
 source erpnext_install.sh
 ```
