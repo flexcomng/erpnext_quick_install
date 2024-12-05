@@ -54,11 +54,11 @@ cd erpnext_quick_install
 ```
 3. Make the script executable
 ```
-chmod +x erpnext_install.sh
+chmod +x erpnext_quick_install.sh
 ```
 4. Run the script:
 ```
-source erpnext_install.sh
+source erpnext_quick_install.sh
 ```
 # Compatibility
 
