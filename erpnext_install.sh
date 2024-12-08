@@ -364,7 +364,7 @@ sleep 1
 # Change directory to frappe-bench
 cd frappe-bench && \
 
-sudo chmod -R o+rx /home/$(echo $USER)
+sudo chmod -R o+rx $(echo $HOME)
 
 bench new-site $site_name --db-root-password $sqlpasswrd --admin-password $adminpasswrd
 
@@ -440,7 +440,7 @@ case "$continue_prod" in
 
 
     # Now to make sure the environment is fully setup
-    sudo chmod 755 /home/$(echo $USER)
+    sudo chmod 755 $(echo $HOME)
     sleep 3
     printf "${GREEN}Production setup complete! "
     printf '\xF0\x9F\x8E\x86'
