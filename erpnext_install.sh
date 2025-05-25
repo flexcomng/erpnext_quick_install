@@ -522,6 +522,7 @@ case "$continue_prod" in
         continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
     fi
 
+    ssl_failed=0
     case "$continue_ssl" in
         "yes" | "y")
             echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable before your proceed.${NC}"
@@ -555,8 +556,12 @@ case "$continue_prod" in
             # Obtain and Install the certificate
             echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
             sleep 2
-            sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name
-            echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+            if ! sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name; then
+                echo -e "${RED}SSL certificate installation failed, but continuing with the rest of the script.${NC}"
+                ssl_failed=1
+            else
+                echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+            fi
             sleep 2
             ;;
         *)
@@ -578,6 +583,14 @@ case "$continue_prod" in
     echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
     echo -e "Enjoy using ERPNext!"
     echo -e "--------------------------------------------------------------------------------${NC}"
+
+    # After the congratulations message, print a big red warning if SSL failed
+    if [ "$ssl_failed" -eq 1 ]; then
+        echo -e "\n\n${RED}================================================================================"
+        echo -e "SSL certificate installation failed!"
+        echo -e "You must run ./helper_scripts/certbot.sh after fixing your DNS/domain to enable SSL."
+        echo -e "================================================================================${NC}\n\n"
+    fi
         ;;
     *)
 
