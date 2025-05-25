@@ -60,6 +60,20 @@ chmod +x erpnext_install.sh
 ```
 source erpnext_install.sh
 ```
+
+### Optional: Using a `.env` File for Unattended/Automated Installs
+
+You can optionally automate the installation by creating a `.env` file in the same directory as `erpnext_install.sh`. The script will use variables from this file to skip interactive prompts, making the process fully unattended if all required values are provided.
+
+1. Copy the example file:
+   ```
+   cp env.bak .env
+   ```
+2. Edit `.env` and fill in your values for the variables provided.
+
+**Note:**  
+For the best user experience, you should either fill out all variables in the `.env` file for a fully automated install, or omit the `.env` file entirely to use the interactive prompts. Mixing both approaches may lead to undesired results or a failed install.
+
 # Compatibility
 
 Ubuntu 24.04 LTS,
