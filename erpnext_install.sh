@@ -107,25 +107,48 @@ echo -e "${LIGHT_BLUE}Welcome to the ERPNext Installer...${NC}"
 echo -e "\n"
 sleep 3
 
-# Prompt user for version selection with a preliminary message
-echo -e "${YELLOW}Please enter the number of the corresponding ERPNext version you wish to install:${NC}"
+# Load .env file if it exists
+ENV_USED=0
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+    echo -e "${YELLOW}Loaded environment variables from .env${NC}"
+    ENV_USED=1
+fi
 
-versions=("Version 13" "Version 14" "Version 15")
-select version_choice in "${versions[@]}"; do
-    case $REPLY in
-        1) bench_version="version-13"; break;;
-        2) bench_version="version-14"; break;;
-        3) bench_version="version-15"; break;;
-        *) echo -e "${RED}Invalid option. Please select a valid version.${NC}";;
+# Prompt user for version selection with a preliminary message
+if [ -n "$BENCH_VERSION" ]; then
+    case $BENCH_VERSION in
+        13) bench_version="version-13"; version_choice="Version 13";;
+        14) bench_version="version-14"; version_choice="Version 14";;
+        15) bench_version="version-15"; version_choice="Version 15";;
+        *) echo -e "${RED}Invalid BENCH_VERSION in .env. Must be 13, 14, or 15.${NC}"; exit 1;;
     esac
-done
+    echo -e "${YELLOW}ERPNext version set from .env: $version_choice${NC}"
+else
+    echo -e "${YELLOW}Please enter the number of the corresponding ERPNext version you wish to install:${NC}"
+    versions=("Version 13" "Version 14" "Version 15")
+    select version_choice in "${versions[@]}"; do
+        case $REPLY in
+            1) bench_version="version-13"; break;;
+            2) bench_version="version-14"; break;;
+            3) bench_version="version-15"; break;;
+            *) echo -e "${RED}Invalid option. Please select a valid version.${NC}";;
+        esac
+    done
+fi
 
 # Confirm the version choice with the user
-echo -e "${GREEN}You have selected $version_choice for installation.${NC}"
-echo -e "${LIGHT_BLUE}Do you wish to continue? (yes/no)${NC}"
-read -p "Response: " continue_install
-continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
-
+if [ -n "$AUTO_CONFIRM_INSTALL" ]; then
+    continue_install=$(echo "$AUTO_CONFIRM_INSTALL" | tr '[:upper:]' '[:lower:]')
+    echo -e "${YELLOW}Auto-confirm install set from .env: $continue_install${NC}"
+else
+    echo -e "${GREEN}You have selected $version_choice for installation.${NC}"
+    echo -e "${LIGHT_BLUE}Do you wish to continue? (yes/no)${NC}"
+    read -p "Response: " continue_install
+    continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
+fi
 while [[ "$continue_install" != "yes" && "$continue_install" != "y" && "$continue_install" != "no" && "$continue_install" != "n" ]]; do
     echo -e "${RED}Invalid response. Please answer with 'yes' or 'no'.${NC}"
     echo -e "${LIGHT_BLUE}Do you wish to continue with the installation of $version_choice? (yes/no)${NC}"
@@ -176,13 +199,18 @@ cd $(sudo -u $USER echo $HOME)
 
 # Next let's set some important parameters.
 # We will need your required SQL root passwords
-echo -e "${YELLOW}Now let's set some important parameters...${NC}"
-sleep 1
-echo -e "${YELLOW}We will need your required SQL root password${NC}"
-sleep 1
-sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
-sleep 1
-echo -e "\n"
+if [ -n "$SQL_ROOT_PASSWORD" ]; then
+    sqlpasswrd="$SQL_ROOT_PASSWORD"
+    echo -e "${YELLOW}SQL root password set from .env${NC}"
+else
+    echo -e "${YELLOW}Now let's set some important parameters...${NC}"
+    sleep 1
+    echo -e "${YELLOW}We will need your required SQL root password${NC}"
+    sleep 1
+    sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
+    sleep 1
+    echo -e "\n"
+fi
 
 # Now let's make sure your instance has the most updated packages
 echo -e "${YELLOW}Updating system packages...${NC}"
@@ -353,10 +381,21 @@ echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
 # Prompt user for site name
-echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
-read -p "Enter the site name (If you wish to install SSL later, please enter a FQDN): " site_name
+if [ -n "$SITE_NAME" ]; then
+    site_name="$SITE_NAME"
+    echo -e "${YELLOW}Site name set from .env: $site_name${NC}"
+else
+    echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
+    read -p "Enter the site name (If you wish to install SSL later, please enter a FQDN): " site_name
+fi
 sleep 1
-adminpasswrd=$(ask_twice "Enter the Administrator password" "true")
+# Prompt for admin password
+if [ -n "$ADMIN_PASSWORD" ]; then
+    adminpasswrd="$ADMIN_PASSWORD"
+    echo -e "${YELLOW}Admin password set from .env${NC}"
+else
+    adminpasswrd=$(ask_twice "Enter the Administrator password" "true")
+fi
 echo -e "\n"
 sleep 2
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
@@ -369,10 +408,14 @@ sudo chmod -R o+rx $(echo $HOME)
 bench new-site $site_name --db-root-password $sqlpasswrd --admin-password $adminpasswrd
 
 # Prompt user to confirm if they want to install ERPNext
-
-echo -e "${LIGHT_BLUE}Would you like to install ERPNext? (yes/no)${NC}"
-read -p "Response: " erpnext_install
-erpnext_install=$(echo "$erpnext_install" | tr '[:upper:]' '[:lower:]')
+if [ -n "$ERPNEXT_INSTALL" ]; then
+    erpnext_install=$(echo "$ERPNEXT_INSTALL" | tr '[:upper:]' '[:lower:]')
+    echo -e "${YELLOW}ERPNext install set from .env: $erpnext_install${NC}"
+else
+    echo -e "${LIGHT_BLUE}Would you like to install ERPNext? (yes/no)${NC}"
+    read -p "Response: " erpnext_install
+    erpnext_install=$(echo "$erpnext_install" | tr '[:upper:]' '[:lower:]')
+fi
 case "$erpnext_install" in
     "yes" | "y")
     sleep 2
@@ -387,9 +430,15 @@ python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.v
 playbook_file="/usr/local/lib/python${python_version}/dist-packages/bench/playbooks/roles/mariadb/tasks/main.yml"
 sudo sed -i 's/- include: /- include_tasks: /g' $playbook_file
 
-echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
-read -p "Response: " continue_prod
-continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')
+# Prompt for production install
+if [ -n "$PRODUCTION_INSTALL" ]; then
+    continue_prod=$(echo "$PRODUCTION_INSTALL" | tr '[:upper:]' '[:lower:]')
+    echo -e "${YELLOW}Production install set from .env: $continue_prod${NC}"
+else
+    echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
+    read -p "Response: " continue_prod
+    continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')
+fi
 case "$continue_prod" in
     "yes" | "y")
 
@@ -447,9 +496,15 @@ case "$continue_prod" in
     printf "${NC}\n"
     sleep 3
 
-    echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
-    read -p "Response: " hrms_install
-    hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
+    # Prompt for HRMS install
+    if [ -n "$HRMS_INSTALL" ]; then
+        hrms_install=$(echo "$HRMS_INSTALL" | tr '[:upper:]' '[:lower:]')
+        echo -e "${YELLOW}HRMS install set from .env: $hrms_install${NC}"
+    else
+        echo -e "${LIGHT_BLUE}Would you like to install HRMS? (yes/no)${NC}"
+        read -p "Response: " hrms_install
+        hrms_install=$(echo "$hrms_install" | tr '[:upper:]' '[:lower:]')
+    fi
     case "$hrms_install" in
         "yes" | "y")
         sleep 2
@@ -459,17 +514,28 @@ case "$continue_prod" in
         sleep 1
     esac
 
-    echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
+    # Prompt for SSL install
+    if [ -n "$INSTALL_SSL" ]; then
+        continue_ssl=$(echo "$INSTALL_SSL" | tr '[:upper:]' '[:lower:]')
+        echo -e "${YELLOW}SSL install set from .env: $continue_ssl${NC}"
+    else
+        echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
+        read -p "Response: " continue_ssl
+        continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
+    fi
 
-    read -p "Response: " continue_ssl
-    continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
-
+    ssl_failed=0
     case "$continue_ssl" in
         "yes" | "y")
             echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable before your proceed.${NC}"
             sleep 3
             # Prompt user for email
-            read -p "Enter your email address: " email_address
+            if [ -n "$EMAIL_ADDRESS" ]; then
+                email_address="$EMAIL_ADDRESS"
+                echo -e "${YELLOW}Email address set from .env: $email_address${NC}"
+            else
+                read -p "Enter your email address: " email_address
+            fi
 
             # Install Certbot
             echo -e "${YELLOW}Installing Certbot...${NC}"
@@ -492,8 +558,12 @@ case "$continue_prod" in
             # Obtain and Install the certificate
             echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
             sleep 2
-            sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name
-            echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+            if ! sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name; then
+                echo -e "${RED}SSL certificate installation failed, but continuing with the rest of the script.${NC}"
+                ssl_failed=1
+            else
+                echo -e "${GREEN}SSL certificate installed successfully.${NC}"
+            fi
             sleep 2
             ;;
         *)
@@ -515,6 +585,14 @@ case "$continue_prod" in
     echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
     echo -e "Enjoy using ERPNext!"
     echo -e "--------------------------------------------------------------------------------${NC}"
+
+    # After the congratulations message, print a big red warning if SSL failed
+    if [ "$ssl_failed" -eq 1 ]; then
+        echo -e "\n\n${RED}================================================================================"
+        echo -e "SSL certificate installation failed!"
+        echo -e "You must run ./helper_scripts/certbot.sh after fixing your DNS/domain to enable SSL."
+        echo -e "================================================================================${NC}\n\n"
+    fi
         ;;
     *)
 
@@ -537,5 +615,15 @@ case "$continue_prod" in
     echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
     echo -e "Enjoy development with Frappe!"
     echo -e "-----------------------------------------------------------------------------------------------${NC}"
+
+    echo -e "-----------------------------------------------------------------------------------------------${NC}"
+
+    if [ "$ENV_USED" -eq 1 ]; then
+        echo -e "\n${LIGHT_BLUE}********************************************************************************${NC}"
+        echo -e "${LIGHT_BLUE}*** SECURITY WARNING: DELETE your .env file now! It contains sensitive secrets. ***${NC}"
+        echo -e "${LIGHT_BLUE}***            Keeping it after installation is a massive SECURITY RISK.        ***${NC}"
+        echo -e "${LIGHT_BLUE}***            Remove it to protect your credentials and your server.           ***${NC}"
+        echo -e "${LIGHT_BLUE}********************************************************************************${NC}\n"
+    fi
     ;;
 esac
