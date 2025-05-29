@@ -108,11 +108,13 @@ echo -e "\n"
 sleep 3
 
 # Load .env file if it exists
+ENV_USED=0
 if [ -f .env ]; then
     set -a
     source .env
     set +a
     echo -e "${YELLOW}Loaded environment variables from .env${NC}"
+    ENV_USED=1
 fi
 
 # Prompt user for version selection with a preliminary message
@@ -613,5 +615,15 @@ case "$continue_prod" in
     echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
     echo -e "Enjoy development with Frappe!"
     echo -e "-----------------------------------------------------------------------------------------------${NC}"
+
+    echo -e "-----------------------------------------------------------------------------------------------${NC}"
+
+    if [ "$ENV_USED" -eq 1 ]; then
+        echo -e "\n${LIGHT_BLUE}********************************************************************************${NC}"
+        echo -e "${LIGHT_BLUE}*** SECURITY WARNING: DELETE your .env file now! It contains sensitive secrets. ***${NC}"
+        echo -e "${LIGHT_BLUE}***            Keeping it after installation is a massive SECURITY RISK.        ***${NC}"
+        echo -e "${LIGHT_BLUE}***            Remove it to protect your credentials and your server.           ***${NC}"
+        echo -e "${LIGHT_BLUE}********************************************************************************${NC}\n"
+    fi
     ;;
 esac

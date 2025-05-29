@@ -70,6 +70,7 @@ You can optionally automate the installation by creating a `.env` file in the sa
    cp env.bak .env
    ```
 2. Edit `.env` and fill in your values for the variables provided.
+3. Proceed with "4. Run the script:" as stated above.
 
 **Note:**  
 For the best user experience, you should either fill out all variables in the `.env` file for a fully automated install, or omit the `.env` file entirely to use the interactive prompts. Mixing both approaches may lead to undesired results or a failed install.
@@ -81,13 +82,16 @@ If SSL certificate installation fails during the main install, or if you need to
 1. Fix any DNS or domain issues so your site is reachable.
 2. Make the script executable (if you haven't already):
    ```
+   cd erpnext_quick_install
+   ```
+   ```
    chmod +x ./helper_scripts/certbot.sh
    ```
 3. Run the helper script:
    ```
    ./helper_scripts/certbot.sh
    ```
-   This script will prompt for your site name and email address (or use values from `.env`), install Certbot if needed, and attempt to obtain and install the SSL certificate for your site.
+   This script will prompt for your site name and email address (or use values from `.env`), install Certbot if needed, and attempt to obtain and install the SSL certificate for your site. If you are trying to install a cert for a domain that is not the exact name of your frappe site, that is beyond the scope of this script and requires advance knowledge.
 
 You can safely run this script multiple times until SSL is successfully installed. However, if you run it too many times in a short period and it keeps failing, Let's Encrypt may temporarily block further requests (rate limiting). This block usually goes away after about 48 hours.
 

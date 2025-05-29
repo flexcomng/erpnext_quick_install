@@ -1,14 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
+# Get the directory where this script is located
+# Helps if you run the script from abnormal location like frappe-bench
+helper_scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+erpnext_quick_install="$(dirname "$helper_scripts")"
+
+d="${helper_scripts}"
+while [[ "$d" != "/" ]]; do
+    if [[ -f "$d/.env" ]]; then
+        source "$d/.env"
+        break
+    fi
+    if [[ "$d" == "$erpnext_quick_install" ]]; then
+        break
+    fi
+    d="$(dirname "$d")"
+done
 
 set -e
-
-# Load .env file if it exists
-if [ -f ../.env ]; then
-    set -a
-    source ../.env
-    set +a
-    echo -e "Loaded environment variables from .env"
-fi
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
