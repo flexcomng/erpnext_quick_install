@@ -202,18 +202,41 @@ check_existing_installations() {
         echo -e "${GREEN}✓ No existing ERPNext installations found.${NC}"
     fi
 }
+
 detect_best_branch() {
     local repo_url="$1"
     local preferred_version="$2"
+    local repo_name="$3"
+    
+    echo -e "${LIGHT_BLUE}🔍 Detecting available branches for $repo_name...${NC}" >&2
     
     local branches=$(git ls-remote --heads "$repo_url" 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||' | sort -V)
     
     if [[ -z "$branches" ]]; then
+        echo -e "${RED}⚠ Could not fetch branches from $repo_url${NC}" >&2
         echo ""
         return 1
     fi
     
     local branch_priorities=()
+    
+    case "$repo_name" in
+        "crm"|"helpdesk"|"builder"|"drive"|"gameplan")
+            echo -e "${YELLOW}🎯 Using 'main' branch for Frappe $repo_name (recommended)${NC}" >&2
+            if echo "$branches" | grep -q "^main$"; then
+                echo -e "${GREEN}✅ Selected branch: main${NC}" >&2
+                echo "main"
+                return 0
+            elif echo "$branches" | grep -q "^master$"; then
+                echo -e "${YELLOW}⚠ 'main' not found, falling back to 'master'${NC}" >&2
+                echo "master"
+                return 0
+            fi
+            ;;
+        "hrms"|"lms")
+            echo -e "${YELLOW}🎯 Detecting best branch for Frappe $repo_name...${NC}" >&2
+            ;;
+    esac
     
     case "$preferred_version" in
         "version-15"|"develop")
@@ -232,12 +255,15 @@ detect_best_branch() {
     
     for priority_branch in "${branch_priorities[@]}"; do
         if echo "$branches" | grep -q "^$priority_branch$"; then
+            echo -e "${GREEN}✅ Selected branch: $priority_branch${NC}" >&2
             echo "$priority_branch"
             return 0
         fi
     done
     
-    echo "$branches" | head -1
+    local fallback_branch=$(echo "$branches" | head -1)
+    echo -e "${YELLOW}⚠ Using fallback branch: $fallback_branch${NC}" >&2
+    echo "$fallback_branch"
     return 0
 }
 
@@ -1012,20 +1038,33 @@ case "$continue_prod" in
 
                                         echo -e "${YELLOW}Step 1/2: Downloading app...${NC}"
                                         
+                                        echo -e "${LIGHT_BLUE}🔄 Detecting optimal branch for $selected_repo...${NC}"
+                                        best_branch=$(detect_best_branch "$selected_url" "$bench_version" "$selected_repo")
+                                        
+                                        if [[ -z "$best_branch" ]]; then
+                                            echo -e "${RED}⚠ Could not detect any branches for $selected_repo. Skipping.${NC}"
+                                            installation_errors+=("$selected_display_name: No branches detected")
+                                            continue
+                                        fi
+                                        
+                                        echo -e "${GREEN}📌 Will install using branch: $best_branch${NC}"
+                                        echo ""
+                                        
                                         download_success=false
                                         
-                                        if bench get-app "$selected_url" --branch "$bench_version" --skip-assets 2>/tmp/bench_error_$.log; then
+                                        echo -e "${YELLOW}🔽 Downloading from branch '$best_branch'...${NC}"
+                                        if bench get-app "$selected_url" --branch "$best_branch" --skip-assets 2>/tmp/bench_error_$.log; then
                                             download_success=true
+                                            echo -e "${GREEN}✅ Successfully downloaded \"$selected_display_name\" from branch '$best_branch'.${NC}"
                                         else
-                                            echo -e "${YELLOW}⚠ Branch '$bench_version' not found, trying default branch...${NC}"
-                                            if bench get-app "$selected_url" --skip-assets 2>/tmp/bench_error_$.log; then
-                                                download_success=true
+                                            echo -e "${RED}❌ Failed to download from branch '$best_branch'.${NC}"
+                                            if [[ -f /tmp/bench_error_$.log ]]; then
+                                                echo -e "${LIGHT_BLUE}Error details:${NC}"
+                                                tail -2 /tmp/bench_error_$.log
                                             fi
                                         fi
                                         
                                         if [ "$download_success" = true ]; then
-                                            echo -e "${GREEN}✓ Successfully downloaded \"$selected_display_name\".${NC}"
-                                            
                                             echo -e "${YELLOW}Step 2/2: Installing to site...${NC}"
                                             app_installed=false
                                             
@@ -1039,7 +1078,7 @@ case "$continue_prod" in
                                                     echo -e "${LIGHT_BLUE}Found app name in setup.py: \"$extracted_app_name\"${NC}"
                                                     if bench --site "$site_name" install-app "$extracted_app_name" 2>/dev/null; then
                                                         echo -e "${GREEN}✓ Successfully installed using setup.py name.${NC}"
-                                                        successful_installations+=("$selected_display_name")
+                                                        successful_installations+=("$selected_display_name (branch: $best_branch)")
                                                         app_installed=true
                                                     else
                                                         echo -e "${YELLOW}⚠ Setup.py name failed, trying alternatives...${NC}"
@@ -1053,7 +1092,7 @@ case "$continue_prod" in
                                                 echo -e "${LIGHT_BLUE}Trying repo name: \"$selected_repo\"${NC}"
                                                 if bench --site "$site_name" install-app "$selected_repo" 2>/dev/null; then
                                                     echo -e "${GREEN}✓ Successfully installed using repo name.${NC}"
-                                                    successful_installations+=("$selected_display_name")
+                                                    successful_installations+=("$selected_display_name (branch: $best_branch)")
                                                     app_installed=true
                                                 fi
                                             fi
@@ -1065,7 +1104,7 @@ case "$continue_prod" in
                                                     echo -e "${LIGHT_BLUE}Trying transformed name: \"$transformed_name\"${NC}"
                                                     if bench --site "$site_name" install-app "$transformed_name" 2>/dev/null; then
                                                         echo -e "${GREEN}✓ Successfully installed using transformed name.${NC}"
-                                                        successful_installations+=("$selected_display_name")
+                                                        successful_installations+=("$selected_display_name (branch: $best_branch)")
                                                         app_installed=true
                                                     fi
                                                 fi
@@ -1077,7 +1116,7 @@ case "$continue_prod" in
                                                     echo -e "${LIGHT_BLUE}Trying lowercase: \"$lowercase_name\"${NC}"
                                                     if bench --site "$site_name" install-app "$lowercase_name" 2>/dev/null; then
                                                         echo -e "${GREEN}✓ Successfully installed using lowercase name.${NC}"
-                                                        successful_installations+=("$selected_display_name")
+                                                        successful_installations+=("$selected_display_name (branch: $best_branch)")
                                                         app_installed=true
                                                     fi
                                                 fi
@@ -1091,7 +1130,7 @@ case "$continue_prod" in
                                                             echo -e "${LIGHT_BLUE}Trying directory name: \"$potential_app_name\"${NC}"
                                                             if bench --site "$site_name" install-app "$potential_app_name" 2>/dev/null; then
                                                                 echo -e "${GREEN}✓ Successfully installed using directory name.${NC}"
-                                                                successful_installations+=("$selected_display_name")
+                                                                successful_installations+=("$selected_display_name (branch: $best_branch)")
                                                                 app_installed=true
                                                                 break
                                                             fi
@@ -1103,7 +1142,7 @@ case "$continue_prod" in
                                             if [[ "$app_installed" == false ]]; then
                                                 echo -e "${RED}✗ Failed to install \"$selected_display_name\" after trying all strategies.${NC}"
                                                 echo -e "${YELLOW}This app may have compatibility issues with ERPNext $bench_version or missing dependencies.${NC}"
-                                                installation_errors+=("$selected_display_name: Installation failed (compatibility/dependency issues)")
+                                                installation_errors+=("$selected_display_name (branch: $best_branch): Installation failed (compatibility/dependency issues)")
                                             fi
                                             
                                             rm -f /tmp/bench_error_$.log
@@ -1117,10 +1156,10 @@ case "$continue_prod" in
                                                     tail -3 /tmp/bench_error_$.log | grep -E "(ERROR|Failed|returned non-zero)" || echo "Check app requirements and compatibility."
                                                 fi
                                                 
-                                                installation_errors+=("$selected_display_name: Dependency/compatibility issues")
+                                                installation_errors+=("$selected_display_name (branch: $best_branch): Dependency/compatibility issues")
                                             else
                                                 echo -e "${RED}✗ Failed to clone \"$selected_display_name\" from repository.${NC}"
-                                                installation_errors+=("$selected_display_name: Git clone failed")
+                                                installation_errors+=("$selected_display_name (branch: $best_branch): Git clone failed")
                                             fi
                                             
                                             rm -f /tmp/bench_error_$.log
