@@ -140,10 +140,10 @@ check_existing_installations() {
     local installation_paths=()
     
     local search_paths=(
-        "$HOME/frappe-bench"
-        "/home/*/frappe-bench"
-        "/opt/frappe-bench"
-        "/var/www/frappe-bench"
+        "$HOME/$bench_name"
+        "/home/*/$bench_name"
+        "/opt/$bench_name"
+        "/var/www/$bench_name"
     )
     
     echo -e "${YELLOW}Checking for existing ERPNext installations...${NC}"
@@ -567,9 +567,11 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 nvm use default
 
-echo -e "${YELLOW}Initialising bench in frappe-bench folder.${NC}"
+echo -e "${YELLOW}Initialising bench in $bench_name folder.${NC}"
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-bench init frappe-bench --version "$bench_version" --verbose
+read -p "Enter a name for your bench folder (default: frappe-bench): " bench_name
+bench_name=${bench_name:-frappe-bench}
+bench init "$bench_name" --version "$bench_version" --verbose
 echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
@@ -585,7 +587,7 @@ sleep 2
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 
-cd frappe-bench && \
+cd "$bench_name" && \
 sudo chmod -R o+rx "$(echo $HOME)"
 
 bench new-site "$site_name" \
