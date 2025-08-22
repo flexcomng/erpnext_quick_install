@@ -391,7 +391,7 @@ sleep 2
 #
 echo -e "${YELLOW}Installing preliminary package requirements${NC}"
 sleep 3
-sudo apt install software-properties-common git curl whiptail -y
+sudo apt install software-properties-common git curl whiptail cron -y
 
 #
 # ─── PYTHON AND REDIS INSTALL ───────────────────────────────────────────────────────────
