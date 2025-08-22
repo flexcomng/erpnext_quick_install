@@ -54,7 +54,23 @@ su frappeuser
 ```bash
 cd /home/frappeuser
 ```
-5. Continue with the next steps below.
+To manually add a user to the sudoers file, follow these steps:
+
+1. Switch to Root User:
+```
+su root
+```
+2. Edit Sudoers File:
+```
+visudo
+```
+3. Add User Entry: Add the following line under the user privilege specification:
+```
+user ALL=(ALL:ALL) ALL
+```
+4. Save and Exit: Press CTRL+X, then Y, and Enter to save and exit.
+
+Continue with the next steps below.
 
 ### Installation Steps
 
