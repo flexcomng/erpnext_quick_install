@@ -681,6 +681,32 @@ echo -e "${GREEN}nvm and Node (v${node_version}) have been installed and aliased
 echo -e "${GREEN}Yarn v$(yarn --version) (Classic) installed globally.${NC}"
 sleep 2
 
+
+#
+# ─── SYMLINK NVM NODE INTO /usr/local/bin ────────────────────────────────────────────────
+# nvm only exposes node/npm/npx on the PATH for interactive shells that source
+# ~/.profile or ~/.bashrc. supervisord runs as a daemon with its own minimal
+# environment and never sources those files, so processes it launches (like
+# socketio, started via `bench socketio`) fail with "node not found" even
+# though `node -v` works fine in a normal terminal. Symlinking the active nvm
+# node binaries into /usr/local/bin — which is on virtually every PATH,
+# including supervisord's default one — fixes this without needing a custom
+# `environment=PATH=...` line in supervisor.conf (which `bench setup
+# supervisor` would wipe out again on any future regeneration anyway).
+#
+# Diagnosed and patched with help from Claude (Anthropic), after this exact
+# failure showed up as "node not found" from bench socketio on a fresh
+# nvm-based install.
+#
+
+echo -e "${YELLOW}Linking nvm-installed Node into /usr/local/bin so supervisor can find it...${NC}"
+nvm_node_bin_dir="$(dirname "$(nvm which default)")"
+sudo ln -sf "$nvm_node_bin_dir/node" /usr/local/bin/node
+sudo ln -sf "$nvm_node_bin_dir/npm" /usr/local/bin/npm
+sudo ln -sf "$nvm_node_bin_dir/npx" /usr/local/bin/npx
+echo -e "${GREEN}Linked $(readlink -f /usr/local/bin/node) -> /usr/local/bin/node${NC}"
+sleep 1
+
 if [[ -z "$py_version" ]] || [[ "$py_major" -lt 3 ]] || [[ "$py_major" -eq 3 && "$py_minor" -lt "$required_python_minor" ]]; then
     python3."${required_python_minor}" -m venv "$USER"
     source "$USER/bin/activate"
