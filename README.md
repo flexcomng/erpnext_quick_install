@@ -92,6 +92,42 @@ chmod +x erpnext_install.sh
 source erpnext_install.sh
 ```
 
+### Unattended Installation
+
+Set `ERPNEXT_UNATTENDED=1` to run without prompts, for example from automation or a provisioning tool. Every prompt is then answered from an environment variable. Without `ERPNEXT_UNATTENDED`, the script stays interactive, and any variable you set simply pre-fills that answer. In unattended mode a missing required setting stops the script with a clear message instead of waiting for input.
+
+| Variable | Required | Default (unattended) | Meaning |
+|---|---|---|---|
+| `ERPNEXT_VERSION` | yes | – | `13`, `14`, `15`, `16` or `develop` (develop also needs `ERPNEXT_DEVELOP_ACK=yes`) |
+| `ERPNEXT_SITE_NAME` | yes | – | Site name (use a FQDN if you want SSL) |
+| `ERPNEXT_DB_ROOT_PASSWORD_FILE` | yes* | – | File whose first line is the MariaDB root password |
+| `ERPNEXT_ADMIN_PASSWORD_FILE` | yes* | – | File whose first line is the Administrator password |
+| `ERPNEXT_BENCH_NAME` | no | `frappe-bench` | Bench folder name |
+| `ERPNEXT_INSTALL_ERPNEXT` | no | `yes` | Install the ERPNext app |
+| `ERPNEXT_PRODUCTION` | no | `yes` | Production setup (nginx and supervisor) |
+| `ERPNEXT_SSL` | no | `no` | Request a Let's Encrypt certificate (needs `ERPNEXT_SSL_EMAIL`) |
+| `ERPNEXT_SSL_EMAIL` | if SSL | – | Email address for Let's Encrypt |
+| `ERPNEXT_UFW` | no | `0` | `1` enables ufw, allowing only SSH, HTTP and HTTPS |
+| `ERPNEXT_ALLOW_EXISTING` | no | `no` | Continue even if an existing bench is detected |
+
+\* `ERPNEXT_DB_ROOT_PASSWORD` and `ERPNEXT_ADMIN_PASSWORD` also work, but the `_FILE` forms keep passwords out of the environment and your shell history. The additional-apps marketplace is interactive, so unattended mode skips it.
+
+Example:
+
+```bash
+umask 077
+openssl rand -base64 24 > ~/.db-root.pw
+openssl rand -base64 24 > ~/.admin.pw
+ERPNEXT_UNATTENDED=1 ERPNEXT_VERSION=15 ERPNEXT_SITE_NAME=erp.example.com \
+ERPNEXT_DB_ROOT_PASSWORD_FILE=~/.db-root.pw ERPNEXT_ADMIN_PASSWORD_FILE=~/.admin.pw \
+ERPNEXT_SSL=yes ERPNEXT_SSL_EMAIL=ops@example.com ERPNEXT_UFW=1 \
+bash erpnext_install.sh
+```
+
+### File permissions
+
+nginx only needs to *traverse* your home directory to reach `sites/assets` and private files, so the script sets `chmod o+x` on `$HOME` (mode `711` after production setup) rather than making the whole home directory world-readable. `common_site_config.json` and the new site's `site_config.json` are set to `600`, because they hold database passwords and the encryption key, and only the bench user needs them.
+
 ## 🖥️ Compatibility
 
 **Supported Operating Systems:**
