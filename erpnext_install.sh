@@ -891,6 +891,18 @@ case "$continue_prod" in
         echo -e "${YELLOW}Configuring Redis services...${NC}"
         sudo systemctl restart redis-server
         sleep 2
+
+        # The Redis instances started by hand during site creation still hold ports
+        # 11000/12000/13000, so supervisor's own redis-cache/redis-queue would fail to
+        # bind ("spawn error"/FATAL) and nothing would manage Redis until the next
+        # reboot. Hand those ports over to supervisor now.
+        if [[ "$bench_version" == "version-15" || "$bench_version" == "version-16" || "$bench_version" == "develop" ]]; then
+            echo -e "${YELLOW}Handing Redis over to supervisor...${NC}"
+            for port in 11000 12000 13000; do
+                redis-cli -p "$port" shutdown nosave >/dev/null 2>&1 || true
+            done
+            sleep 2
+        fi
         
         if ! sudo supervisorctl restart all; then
             echo -e "${YELLOW}Warning: supervisorctl restart all reported errors. Some services (often Redis) may have failed to spawn.${NC}"
