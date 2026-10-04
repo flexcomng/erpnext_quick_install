@@ -16,7 +16,65 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 LIGHT_BLUE='\033[1;34m'
-NC='\033[0m' 
+NC='\033[0m'
+
+#
+# ─── UNATTENDED MODE ───────────────────────────────────────────────────────────────────
+#
+# Run with ERPNEXT_UNATTENDED=1 and answer every prompt from environment variables
+# (see "Unattended Installation" in README.md). Without it, the script is interactive
+# exactly as before. In unattended mode a missing required setting stops the script
+# with a clear message instead of waiting for input.
+UNATTENDED="${ERPNEXT_UNATTENDED:-0}"
+
+# answer VAR "prompt" [default] -> value of $VAR if set; in unattended mode the default
+# (or a hard stop when there is none); otherwise asks interactively.
+answer() {
+    local var="$1" prompt="$2" default="${3:-}"
+    local val="${!var:-}"
+    if [[ -n "$val" ]]; then
+        echo "$val"
+        return
+    fi
+    if [[ "$UNATTENDED" == "1" ]]; then
+        if [[ -n "$default" ]]; then
+            echo "$default"
+            return
+        fi
+        echo -e "${RED}Unattended mode: required setting $var is not set.${NC}" >&2
+        exit 1
+    fi
+    read -rp "$prompt" val
+    echo "${val:-$default}"
+}
+
+# secret_answer VAR "prompt" -> password from file ${VAR}_FILE, else $VAR, else asked twice.
+# Prefer the _FILE form so passwords never sit in the environment or shell history.
+secret_answer() {
+    local var="$1" prompt="$2"
+    local file_var="${var}_FILE"
+    local file="${!file_var:-}"
+    if [[ -n "$file" ]]; then
+        if [[ ! -r "$file" ]]; then
+            echo -e "${RED}Cannot read $file_var ($file).${NC}" >&2
+            exit 1
+        fi
+        head -n1 "$file" | tr -d '\r\n'
+        return
+    fi
+    if [[ -n "${!var:-}" ]]; then
+        echo "${!var}"
+        return
+    fi
+    if [[ "$UNATTENDED" == "1" ]]; then
+        echo -e "${RED}Unattended mode: set $file_var (preferred) or $var.${NC}" >&2
+        exit 1
+    fi
+    ask_twice "$prompt" "true"
+}
+
+# Early default so the existing-installation check looks in the right place.
+bench_name="${ERPNEXT_BENCH_NAME:-frappe-bench}"
 
 SUPPORTED_DISTRIBUTIONS=("Ubuntu" "Debian")
 SUPPORTED_VERSIONS=("24.04" "23.04" "22.04" "20.04" "12" "11" "10" "9" "8")
@@ -188,7 +246,7 @@ check_existing_installations() {
         echo -e "${GREEN}4. Use different users/paths if you must have multiple versions${NC}"
         echo ""
         
-        read -p "Do you want to continue anyway? (yes/no): " conflict_confirm
+        conflict_confirm=$(answer ERPNEXT_ALLOW_EXISTING "Do you want to continue anyway? (yes/no): " "no")
         conflict_confirm=$(echo "$conflict_confirm" | tr '[:upper:]' '[:lower:]')
         
         if [[ "$conflict_confirm" != "yes" && "$conflict_confirm" != "y" ]]; then
@@ -277,6 +335,24 @@ sleep 3
 echo -e "${YELLOW}Please enter the number of the corresponding ERPNext version you wish to install:${NC}"
 
 versions=("Version 13" "Version 14" "Version 15" "Version 16" "Develop")
+if [[ -n "${ERPNEXT_VERSION:-}" ]]; then
+    case "${ERPNEXT_VERSION}" in
+        13|version-13) bench_version="version-13"; version_choice="Version 13";;
+        14|version-14) bench_version="version-14"; version_choice="Version 14";;
+        15|version-15) bench_version="version-15"; version_choice="Version 15";;
+        16|version-16) bench_version="version-16"; version_choice="Version 16";;
+        develop)
+            if [[ "${ERPNEXT_DEVELOP_ACK:-}" != "yes" ]]; then
+                echo -e "${RED}ERPNEXT_VERSION=develop also needs ERPNEXT_DEVELOP_ACK=yes (develop is unstable and not for production).${NC}"
+                exit 1
+            fi
+            bench_version="develop"; version_choice="Develop";;
+        *) echo -e "${RED}ERPNEXT_VERSION must be one of 13, 14, 15, 16, develop.${NC}"; exit 1;;
+    esac
+elif [[ "$UNATTENDED" == "1" ]]; then
+    echo -e "${RED}Unattended mode: required setting ERPNEXT_VERSION is not set.${NC}"
+    exit 1
+else
 select version_choice in "${versions[@]}"; do
     case $REPLY in
         1) bench_version="version-13"; break;;
@@ -309,14 +385,16 @@ select version_choice in "${versions[@]}"; do
         *) echo -e "${RED}Invalid option. Please select a valid version.${NC}";;
     esac
 done
+fi
 
 echo -e "${GREEN}You have selected $version_choice for installation.${NC}"
 echo -e "${LIGHT_BLUE}Do you wish to continue? (yes/no)${NC}"
-read -p "Response: " continue_install
+continue_install=$(answer ERPNEXT_CONFIRM "Response: " "yes")
 continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
 
 while [[ "$continue_install" != "yes" && "$continue_install" != "y" && "$continue_install" != "no" && "$continue_install" != "n" ]]; do
     echo -e "${RED}Invalid response. Please answer with 'yes' or 'no'.${NC}"
+    [[ "$UNATTENDED" == "1" ]] && exit 1
     echo -e "${LIGHT_BLUE}Do you wish to continue with the installation of $version_choice? (yes/no)${NC}"
     read -p "Response: " continue_install
     continue_install=$(echo "$continue_install" | tr '[:upper:]' '[:lower:]')
@@ -376,7 +454,7 @@ echo -e "${YELLOW}Now let's set some important parameters...${NC}"
 sleep 1
 echo -e "${YELLOW}We will need your required SQL root password${NC}"
 sleep 1
-sqlpasswrd=$(ask_twice "What is your required SQL root password" "true")
+sqlpasswrd=$(secret_answer ERPNEXT_DB_ROOT_PASSWORD "What is your required SQL root password")
 echo -e "\n"
 sleep 1
 
@@ -629,7 +707,7 @@ nvm use default
 
 echo -e "${YELLOW}Initialising bench in $bench_name folder.${NC}"
 echo -e "${LIGHT_BLUE}If you get a restart failed, don't worry, we will resolve that later.${NC}"
-read -p "Enter a name for your bench folder (default: frappe-bench): " bench_name
+bench_name=$(answer ERPNEXT_BENCH_NAME "Enter a name for your bench folder (default: frappe-bench): " "frappe-bench")
 bench_name=${bench_name:-frappe-bench}
 bench init "$bench_name" --version "$bench_version" --verbose
 echo -e "${GREEN}Bench installation complete!${NC}"
@@ -639,21 +717,27 @@ sleep 1
 # ─── NEW SITE CREATION ─────────────────────────────────────────────────────────────────
 #
 echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
-read -p "Enter the site name (If you wish to install SSL later, please enter a FQDN): " site_name
+site_name=$(answer ERPNEXT_SITE_NAME "Enter the site name (If you wish to install SSL later, please enter a FQDN): ")
 sleep 1
-adminpasswrd=$(ask_twice "Enter the Administrator password" "true")
+adminpasswrd=$(secret_answer ERPNEXT_ADMIN_PASSWORD "Enter the Administrator password")
 echo -e "\n"
 sleep 2
 echo -e "${YELLOW}Now setting up your site. This might take a few minutes. Please wait...${NC}"
 sleep 1
 
+# nginx (www-data) only needs to traverse the home directory to reach sites/assets and
+# private files; the bench folders are already world-readable. A recursive o+rx would
+# also expose every site_config.json (database passwords, encryption keys) to all users.
 cd "$bench_name" && \
-sudo chmod -R o+rx "$(echo $HOME)"
+sudo chmod o+x "$HOME"
 
 bench new-site "$site_name" \
   --db-root-username root \
   --db-root-password "$sqlpasswrd" \
   --admin-password "$adminpasswrd"
+
+# Site and bench configs hold credentials: owner-only. Only the bench user reads them.
+chmod 600 sites/common_site_config.json "sites/$site_name/site_config.json" 2>/dev/null || true
 
 if [[ "$bench_version" == "version-15" || "$bench_version" == "version-16" || "$bench_version" == "develop" ]]; then
     echo -e "${YELLOW}Starting Redis instances for $bench_version (queue, cache, and socketio)...${NC}"
@@ -666,7 +750,7 @@ if [[ "$bench_version" == "version-15" || "$bench_version" == "version-16" || "$
 fi
 
 echo -e "${LIGHT_BLUE}Would you like to install ERPNext? (yes/no)${NC}"
-read -p "Response: " erpnext_install
+erpnext_install=$(answer ERPNEXT_INSTALL_ERPNEXT "Response: " "yes")
 erpnext_install=$(echo "$erpnext_install" | tr '[:upper:]' '[:lower:]')
 
 case "$erpnext_install" in
@@ -700,7 +784,7 @@ else
 fi
 
 echo -e "${LIGHT_BLUE}Would you like to continue with production install? (yes/no)${NC}"
-read -p "Response: " continue_prod
+continue_prod=$(answer ERPNEXT_PRODUCTION "Response: " "yes")
 continue_prod=$(echo "$continue_prod" | tr '[:upper:]' '[:lower:]')
 
 case "$continue_prod" in
@@ -775,8 +859,9 @@ case "$continue_prod" in
         echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment permissions.${NC}"
         sleep 1
 
-        sudo chmod 755 "$(echo $HOME)"
-        
+        # Traverse only (see the note at site creation): nginx needs x, not r, on $HOME.
+        sudo chmod 711 "$HOME"
+
         echo -e "${YELLOW}Configuring Redis services...${NC}"
         sudo systemctl restart redis-server
         sleep 2
@@ -795,8 +880,23 @@ case "$continue_prod" in
         #
         # ─── ADDITIONAL APPS INSTALL SECTION ────────────────────────────────
         #
+        #
+        # ─── OPTIONAL FIREWALL (ERPNEXT_UFW=1) ───────────────────────────────
+        #
+        if [[ "${ERPNEXT_UFW:-0}" == "1" ]]; then
+            echo -e "${YELLOW}Configuring firewall (ufw): allowing SSH, HTTP and HTTPS only...${NC}"
+            sudo apt install -y ufw
+            sudo ufw allow 22/tcp
+            sudo ufw allow 80/tcp
+            sudo ufw allow 443/tcp
+            sudo ufw --force enable
+            sudo ufw status
+        fi
+
         echo -e "${LIGHT_BLUE}Would you like to install additional Frappe apps? (yes/no)${NC}"
-        read -p "Response: " extra_apps_install
+        # The apps marketplace is an interactive browser, so unattended mode skips it.
+        extra_apps_install=$(answer ERPNEXT_EXTRA_APPS "Response: " "no")
+        [[ "$UNATTENDED" == "1" ]] && extra_apps_install="no"
         extra_apps_install=$(echo "$extra_apps_install" | tr '[:upper:]' '[:lower:]')
 
         case "$extra_apps_install" in
@@ -1332,7 +1432,7 @@ case "$continue_prod" in
         # ─── SSL SECTION ────────────────────────────────────────────────────────────────
         #
         echo -e "${YELLOW}Would you like to install SSL? (yes/no)${NC}"
-        read -p "Response: " continue_ssl
+        continue_ssl=$(answer ERPNEXT_SSL "Response: " "no")
         continue_ssl=$(echo "$continue_ssl" | tr '[:upper:]' '[:lower:]')
 
         case "$continue_ssl" in
@@ -1341,7 +1441,7 @@ case "$continue_prod" in
                 sleep 3
 
                 if ! command -v certbot >/dev/null 2>&1; then
-                    read -p "Enter your email address: " email_address
+                    email_address=$(answer ERPNEXT_SSL_EMAIL "Enter your email address: ")
 
                     echo -e "${YELLOW}Installing Certbot...${NC}"
                     sleep 1
@@ -1364,7 +1464,7 @@ case "$continue_prod" in
                 else
                     echo -e "${GREEN}Certbot is already installed. Skipping installation.${NC}"
                     sleep 1
-                    read -p "Enter your email address: " email_address
+                    email_address=$(answer ERPNEXT_SSL_EMAIL "Enter your email address: ")
                 fi
 
                 echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
