@@ -726,6 +726,13 @@ fi
 
 sudo apt install python3-pip -y
 sudo pip3 install frappe-bench
+# frappe-bench requires setuptools>=83, and that release deletes pkg_resources.
+# Ubuntu's supervisor 4.2.5 still imports it, so restore the apt copy after pip.
+# Install ansible first: bench setup production would pip-install it later and
+# could run the setuptools installer again before supervisorctl starts.
+sudo python3 -m pip install ansible
+sudo apt install --reinstall -y python3-pkg-resources
+python3 -c "import pkg_resources"
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
